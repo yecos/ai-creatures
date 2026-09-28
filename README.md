@@ -38,7 +38,7 @@ A tiny evolving creature that actually lives on your desktop.
 - Vite
 - LocalStorage for creature state + Tauri app config for brain settings
 
-SQLite and Ollama are intentionally deferred until the core creature loop feels good.
+The creature simulation stays fully functional without AI. Ollama and Hermes are optional brain providers.
 
 ## Run on Windows
 
@@ -81,13 +81,6 @@ Miko is currently a soft alien/slime creature with:
 - contextual particles for petting, eating, playing and sleeping
 
 ## Roadmap
-
-### v0.5 — AI Brain
-- Ollama support
-- Short and long-term memory
-- Creature speech based on personality, not assistant behavior
-- Optional cloud-model adapters
-- Memory of treasures, interactions and favorite routines
 
 ### v0.6 — Evolution
 - Hidden evolution conditions
@@ -142,6 +135,29 @@ http://127.0.0.1:11434/v1
 
 The default model field is `qwen3.5:latest`, but it can be changed from Miko's brain panel.
 
-### Brain safety
+### Hermes tool safety
 
-AI Creatures sends a short pet-personality system prompt and requests no tool use for Hermes conversations. Hermes itself remains a full agent runtime, so advanced tool-enabled behavior is intentionally not exposed by AI Creatures v0.5.
+Hermes' API server is a full agent runtime and can expose terminal, file, web and other tools. AI Creatures therefore checks Hermes' authenticated `/v1/toolsets` endpoint before using it.
+
+By default:
+
+- Hermes with **0 enabled toolsets** can be used as Miko's brain.
+- Hermes with **active toolsets** is blocked.
+- In **Auto** mode, a blocked/unavailable Hermes falls back to Ollama.
+- The brain panel has an explicit advanced switch if you intentionally want to allow a tool-enabled Hermes instance.
+
+For a dedicated Miko-only Hermes profile, configure the API-server platform with no tools and restart the gateway:
+
+```yaml
+platform_toolsets:
+  api_server: []
+```
+
+You can verify what the running API server exposes with:
+
+```bash
+curl http://127.0.0.1:8642/v1/toolsets \
+  -H "Authorization: Bearer $API_SERVER_KEY"
+```
+
+AI Creatures also sends a stable `X-Hermes-Session-Key` so Hermes memory providers can keep Miko's memory scope consistent between turns.
