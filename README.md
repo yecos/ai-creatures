@@ -23,6 +23,8 @@ A tiny evolving creature that actually lives on your desktop.
 - Automatic Hermes → Ollama fallback
 - Stable Hermes session key for future long-term memory
 - AI reactions use Miko's personality, stats, time, treasures and recent journal
+- Direct mini-chat with Miko from the desktop panel
+- Hermes model discovery through `/v1/models` so named profiles work cleanly
 - Interaction effects: hearts, crumbs, stars and sleep particles
 - Hunger, energy, happiness, bond, XP and levels
 - Feed, play, pet and sleep interactions
