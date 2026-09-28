@@ -85,12 +85,6 @@ Miko is currently a soft alien/slime creature with:
 - Memory of treasures, interactions and favorite routines
 
 ### v0.6 — Evolution
-- Ollama support
-- Short and long-term memory
-- Creature speech based on personality, not assistant behavior
-- Optional cloud-model adapters
-
-### v0.6 — Evolution
 - Hidden evolution conditions
 - Visual mutations
 - Species branches
