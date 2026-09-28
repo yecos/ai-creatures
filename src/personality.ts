@@ -199,4 +199,6 @@ export function chooseIdleReaction(profile: PersonalityProfile | null): IdleReac
     case "sleepy":
       return roll < .56 ? "sleep" : roll < .76 ? "shy" : roll < .92 ? "peek" : "bounce";
   }
+
+  return "peek";
 }
