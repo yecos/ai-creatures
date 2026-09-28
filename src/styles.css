@@ -972,3 +972,76 @@ button { font: inherit; }
   background: rgba(255,90,124,.055);
 }
 .brain-safe.blocked p { color: #c8a1aa; }
+
+
+/* ---------------- direct chat v0.5 ---------------- */
+.chat-view {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.chat-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.chat-heading b { font-size: 10px; }
+.chat-heading span { color: #9694a7; font-size: 7px; }
+.chat-orb {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: linear-gradient(145deg, rgba(126,99,255,.24), rgba(87,219,208,.12));
+  font-size: 14px !important;
+}
+.chat-view > p {
+  margin: 0;
+  color: #aaa8ba;
+  font-size: 7px;
+  line-height: 1.45;
+}
+.chat-compose {
+  display: grid;
+  grid-template-columns: 1fr 30px;
+  gap: 5px;
+}
+.chat-compose input {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 9px;
+  padding: 8px 9px;
+  outline: none;
+  color: #f3f1fa;
+  background: rgba(5,6,14,.28);
+  font-size: 7px;
+}
+.chat-compose input:focus {
+  border-color: rgba(111,225,211,.26);
+  box-shadow: 0 0 0 2px rgba(100,220,210,.05);
+}
+.chat-compose button {
+  border: 1px solid rgba(113,225,211,.18);
+  border-radius: 9px;
+  color: white;
+  background: linear-gradient(145deg, rgba(126,99,255,.34), rgba(76,211,199,.26));
+  cursor: pointer;
+  font-weight: 900;
+}
+.chat-compose button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.chat-view > small {
+  color: #7f7d8f;
+  font-size: 6px;
+  line-height: 1.4;
+}
