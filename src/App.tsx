@@ -147,6 +147,11 @@ export default function App() {
   const reactionTimer = useRef<number | null>(null);
   const particleId = useRef(0);
   const hatchTimer = useRef<number | null>(null);
+  const creatureRef = useRef(creature);
+
+  useEffect(() => {
+    creatureRef.current = creature;
+  }, [creature]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -270,14 +275,18 @@ export default function App() {
   }, [creature.hatched, creature.personality, dayPhase, menuOpen, reaction]);
 
   useEffect(() => {
-    if (!creature.hatched || creature.treasures.length >= 10) return;
+    if (!creature.hatched) return;
 
     const discovery = window.setInterval(() => {
-      if (reaction === "sleep" || creature.energy < 14) return;
-      if (Date.now() - creature.lastDiscoveryAt < 30000) return;
-      if (Math.random() > discoveryChance(dayPhase, creature.personality)) return;
+      const current = creatureRef.current;
+      if (!current.hatched || current.treasures.length >= 10) return;
+      if (current.mood === "sleepy" || current.energy < 14) return;
+      if (Date.now() - current.lastDiscoveryAt < 30000) return;
 
-      const item = discoverTreasure(creature.treasures.map((treasure) => treasure.id), creature.personality);
+      const phaseNow = getDayPhase();
+      if (Math.random() > discoveryChance(phaseNow, current.personality)) return;
+
+      const item = discoverTreasure(current.treasures.map((treasure) => treasure.id), current.personality);
       if (!item) return;
 
       const event = createEvent("Encontró " + item.name + ".", "discovery");
@@ -287,14 +296,14 @@ export default function App() {
         journal: [event, ...prev.journal].slice(0, 8),
         lastDiscoveryAt: Date.now()
       }));
-      setMessage(discoveryMessage(item, creature.personality));
-      setTemporaryReaction(creature.personality?.id === "shy" ? "shy" : "bounce", 1350);
-      burst(item.rarity === "mystery" ? "star" : item.rarity === "rare" ? "heart" : "star", item.rarity === "mystery" ? 12 : 6);
+      setMessage(discoveryMessage(item, current.personality));
+      setTemporaryReaction(current.personality?.id === "shy" ? "shy" : "bounce", 1350);
+      burst(item.rarity === "rare" ? "heart" : "star", item.rarity === "mystery" ? 12 : 6);
       gainXp(item.rarity === "mystery" ? 24 : item.rarity === "rare" ? 16 : 10);
     }, 45000);
 
     return () => clearInterval(discovery);
-  }, [creature.hatched, creature.treasures, creature.lastDiscoveryAt, creature.personality, creature.energy, dayPhase, reaction]);
+  }, [creature.hatched]);
 
   function setTemporaryReaction(next: Reaction, duration = 1500) {
     if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
