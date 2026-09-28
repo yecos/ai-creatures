@@ -964,3 +964,11 @@ button { font: inherit; }
   font-weight: 800;
   cursor: pointer;
 }
+
+.brain-toggle-danger { color: #c6a2aa; }
+.brain-toggle-danger input { accent-color: #d87991; }
+.brain-safe.blocked {
+  border-color: rgba(255,116,147,.18);
+  background: rgba(255,90,124,.055);
+}
+.brain-safe.blocked p { color: #c8a1aa; }
