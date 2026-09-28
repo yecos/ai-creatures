@@ -145,11 +145,12 @@ function moodLabel(mood: Mood) {
 export default function App() {
   const [creature, setCreature] = useState<CreatureState>(() => readState());
   const [menuOpen, setMenuOpen] = useState(false);
-  const [panelView, setPanelView] = useState<"main" | "treasures" | "brain">("main");
+  const [panelView, setPanelView] = useState<"main" | "treasures" | "brain" | "chat">("main");
   const [dayPhase, setDayPhase] = useState<DayPhase>(() => getDayPhase());
   const [brainConfig, setBrainConfig] = useState<PublicBrainConfig>(defaultBrainConfig);
   const [brainStatus, setBrainStatus] = useState<BrainStatus | null>(null);
   const [brainKeyDraft, setBrainKeyDraft] = useState("");
+  const [brainChatDraft, setBrainChatDraft] = useState("");
   const [brainThinking, setBrainThinking] = useState(false);
   const [brainError, setBrainError] = useState("");
   const [message, setMessage] = useState("hola ✦");
@@ -466,9 +467,25 @@ export default function App() {
 
   function talk() {
     const localLine = personalityLine(creature.personality, creature.mood);
-    setMessage(brainConfig.mode === "local" ? localLine : "hmm…");
     setTemporaryReaction("peek", 1200);
-    void speakWithBrain("El humano quiere conversar contigo y te está prestando atención.");
+
+    if (brainConfig.mode === "local") {
+      setMessage(localLine);
+      return;
+    }
+
+    setPanelView("chat");
+    setMessage("te escucho ✦");
+  }
+
+  function sendChat() {
+    const text = brainChatDraft.trim();
+    if (!text || brainThinking) return;
+
+    setBrainChatDraft("");
+    setMessage("hmm…");
+    setTemporaryReaction("peek", 1400);
+    void speakWithBrain('El humano te dijo: "' + text + '". Respóndele directamente como Miko.');
   }
 
   function feed() {
@@ -691,7 +708,7 @@ export default function App() {
         </div>
         </> : panelView === "treasures" ? (
           <TreasureView treasures={creature.treasures} journal={creature.journal} />
-        ) : (
+        ) : panelView === "brain" ? (
           <BrainView
             config={brainConfig}
             status={brainStatus}
@@ -703,11 +720,70 @@ export default function App() {
             onSave={() => void saveBrainSettings()}
             onRefresh={() => void refreshBrain()}
           />
+        ) : (
+          <ChatView
+            mode={brainConfig.mode}
+            draft={brainChatDraft}
+            busy={brainThinking}
+            error={brainError}
+            onDraft={setBrainChatDraft}
+            onSend={sendChat}
+          />
         )}
       </section>}
 
       {!menuOpen && hatchPhase === "hatched" && <div className="hint">clic · cariño &nbsp;&nbsp; clic derecho · menú</div>}
     </main>
+  );
+}
+
+function ChatView({
+  mode,
+  draft,
+  busy,
+  error,
+  onDraft,
+  onSend
+}: {
+  mode: PublicBrainConfig["mode"];
+  draft: string;
+  busy: boolean;
+  error: string;
+  onDraft: (value: string) => void;
+  onSend: () => void;
+}) {
+  return (
+    <div className="chat-view">
+      <div className="chat-heading">
+        <span className="chat-orb">💬</span>
+        <div>
+          <b>Hablar con Miko</b>
+          <span>cerebro · {mode}</span>
+        </div>
+      </div>
+
+      <p>Escríbele algo. Miko responderá en la burbuja sobre su cabeza.</p>
+
+      <div className="chat-compose">
+        <input
+          autoFocus
+          value={draft}
+          maxLength={180}
+          placeholder="¿Qué estás haciendo, Miko?"
+          onChange={(e) => onDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSend();
+          }}
+        />
+        <button onClick={onSend} disabled={busy || !draft.trim()}>
+          {busy ? "…" : "↑"}
+        </button>
+      </div>
+
+      {error && <div className="brain-error">{error}</div>}
+
+      <small>Hermes/Ollama reciben el estado y recuerdos recientes de Miko.</small>
+    </div>
   );
 }
 
