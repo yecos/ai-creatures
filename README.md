@@ -2,7 +2,7 @@
 
 A tiny evolving creature that actually lives on your desktop.
 
-**v0.4 life events** lets Miko live a small autonomous life on your desktop.
+**v0.5 brain providers** lets Miko use a local brain, Ollama, Hermes Agent, or automatic fallback.
 
 ## What already works
 
@@ -18,6 +18,11 @@ A tiny evolving creature that actually lives on your desktop.
 - Autonomous treasure discoveries with common, unusual, rare and mystery items
 - Persistent 10-item collection and a short life journal
 - Return moments are recorded when you come back after being away
+- Brain modes: Local, Auto, Hermes Agent and Ollama
+- Hermes status check via the gateway API
+- Automatic Hermes → Ollama fallback
+- Stable Hermes session key for future long-term memory
+- AI reactions use Miko's personality, stats, time, treasures and recent journal
 - Interaction effects: hearts, crumbs, stars and sleep particles
 - Hunger, energy, happiness, bond, XP and levels
 - Feed, play, pet and sleep interactions
@@ -31,7 +36,7 @@ A tiny evolving creature that actually lives on your desktop.
 - Tauri 2 / Rust
 - React 19 + TypeScript
 - Vite
-- LocalStorage for v0.4 state
+- LocalStorage for creature state + Tauri app config for brain settings
 
 SQLite and Ollama are intentionally deferred until the core creature loop feels good.
 
@@ -100,3 +105,43 @@ Miko is currently a soft alien/slime creature with:
 ## Design principle
 
 This is a **game that happens on your desktop**, not a productivity assistant with a mascot.
+
+
+## Hermes Agent
+
+AI Creatures can use Hermes Agent as Miko's optional brain.
+
+Enable the Hermes API server in `~/.hermes/.env`:
+
+```env
+API_SERVER_ENABLED=true
+API_SERVER_KEY=choose-a-local-key
+```
+
+Start Hermes:
+
+```bash
+hermes gateway
+```
+
+Then open **Miko → Cerebro**, choose **Hermes** or **Auto**, keep the default endpoint:
+
+```text
+http://127.0.0.1:8642/v1
+```
+
+and enter the same `API_SERVER_KEY`.
+
+**Auto mode** tries Hermes first, then Ollama, then Miko continues with its built-in local behavior if neither provider is available.
+
+For Ollama, the default endpoint is:
+
+```text
+http://127.0.0.1:11434/v1
+```
+
+The default model field is `qwen3.5:latest`, but it can be changed from Miko's brain panel.
+
+### Brain safety
+
+AI Creatures sends a short pet-personality system prompt and requests no tool use for Hermes conversations. Hermes itself remains a full agent runtime, so advanced tool-enabled behavior is intentionally not exposed by AI Creatures v0.5.
