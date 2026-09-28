@@ -9,6 +9,7 @@ export type PublicBrainConfig = {
   ollamaUrl: string;
   ollamaModel: string;
   fallbackToOllama: boolean;
+  allowHermesTools: boolean;
   sessionKey: string;
 };
 
@@ -16,6 +17,7 @@ export type ProviderStatus = {
   online: boolean;
   label: string;
   detail: string;
+  toolsetsEnabled: number | null;
 };
 
 export type BrainStatus = {
@@ -38,6 +40,7 @@ export const defaultBrainConfig: PublicBrainConfig = {
   ollamaUrl: "http://127.0.0.1:11434/v1",
   ollamaModel: "qwen3.5:latest",
   fallbackToOllama: true,
+  allowHermesTools: false,
   sessionKey: "ai-creatures:miko"
 };
 
@@ -57,6 +60,7 @@ export async function saveBrainConfig(
       ollamaUrl: config.ollamaUrl,
       ollamaModel: config.ollamaModel,
       fallbackToOllama: config.fallbackToOllama,
+      allowHermesTools: config.allowHermesTools,
       sessionKey: config.sessionKey
     }
   });
