@@ -166,10 +166,17 @@ async fn check_hermes(config: &BrainConfig) -> ProviderStatus {
         };
     };
 
-    let mut req = client.get(format!("{}/health", root_base(&config.hermes_url)));
-    if !config.hermes_api_key.trim().is_empty() {
-        req = req.bearer_auth(config.hermes_api_key.trim());
+    if config.hermes_api_key.trim().is_empty() {
+        return ProviderStatus {
+            online: false,
+            label: "Hermes".into(),
+            detail: "falta API key".into(),
+        };
     }
+
+    let req = client
+        .get(format!("{}/capabilities", v1_base(&config.hermes_url)))
+        .bearer_auth(config.hermes_api_key.trim());
 
     match req.send().await {
         Ok(response) if response.status().is_success() => ProviderStatus {
