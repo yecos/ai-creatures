@@ -2,7 +2,7 @@
 
 A tiny evolving creature that actually lives on your desktop.
 
-**v0.3 personality** gives every Miko a persistent temperament that changes how it behaves.
+**v0.4 life events** lets Miko live a small autonomous life on your desktop.
 
 ## What already works
 
@@ -14,6 +14,10 @@ A tiny evolving creature that actually lives on your desktop.
 - Six persistent personality archetypes: curious, affectionate, mischievous, glutton, shy and sleepy
 - Personality changes movement, chatter, appetite, playfulness, bonding and autonomous actions
 - Each Miko gets a small unique quirk and favorite snack
+- Real local-time rhythm: morning, day, evening and night
+- Autonomous treasure discoveries with common, unusual, rare and mystery items
+- Persistent 10-item collection and a short life journal
+- Return moments are recorded when you come back after being away
 - Interaction effects: hearts, crumbs, stars and sleep particles
 - Hunger, energy, happiness, bond, XP and levels
 - Feed, play, pet and sleep interactions
@@ -27,7 +31,7 @@ A tiny evolving creature that actually lives on your desktop.
 - Tauri 2 / Rust
 - React 19 + TypeScript
 - Vite
-- LocalStorage for v0.3 state
+- LocalStorage for v0.4 state
 
 SQLite and Ollama are intentionally deferred until the core creature loop feels good.
 
@@ -73,17 +77,12 @@ Miko is currently a soft alien/slime creature with:
 
 ## Roadmap
 
-### v0.4 — Life events
-- Daily rhythm and real sleep/wake cycle
-- Random discoveries and tiny events
-- Small inventory and favorite objects
-- Short event history
-
 ### v0.5 — AI Brain
 - Ollama support
 - Short and long-term memory
 - Creature speech based on personality, not assistant behavior
 - Optional cloud-model adapters
+- Memory of treasures, interactions and favorite routines
 
 ### v0.6 — Evolution
 - Hidden evolution conditions
