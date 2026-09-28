@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 
 const STORAGE_KEY = "ai-creatures:v0.2";
 
 type Mood = "idle" | "happy" | "sleepy" | "hungry" | "curious";
-type Reaction = "none" | "pet" | "feed" | "play" | "sleep";
+type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce";
 type ParticleKind = "heart" | "star" | "crumb" | "zzz";
 
 type CreatureState = {
@@ -20,6 +20,7 @@ type CreatureState = {
   ageSeconds: number;
   mood: Mood;
   lastSavedAt: number;
+  hatched: boolean;
 };
 
 type Particle = {
@@ -40,7 +41,8 @@ const initialState: CreatureState = {
   bond: 10,
   ageSeconds: 0,
   mood: "curious",
-  lastSavedAt: Date.now()
+  lastSavedAt: Date.now(),
+  hatched: false
 };
 
 function clamp(value: number, min = 0, max = 100) {
@@ -90,12 +92,14 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [message, setMessage] = useState("hola ✦");
   const [reaction, setReaction] = useState<Reaction>("none");
+  const [hatchPhase, setHatchPhase] = useState<"egg" | "cracking" | "hatched">(() => creature.hatched ? "hatched" : "egg");
   const [direction, setDirection] = useState<1 | -1>(1);
   const [particles, setParticles] = useState<Particle[]>([]);
   const stageRef = useRef<HTMLElement | null>(null);
   const moveRef = useRef({ dx: 1.15, dy: 0 });
   const reactionTimer = useRef<number | null>(null);
   const particleId = useRef(0);
+  const hatchTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -143,7 +147,7 @@ export default function App() {
     let timer: number | undefined;
 
     async function wander() {
-      if (stopped || menuOpen || reaction === "sleep" || creature.mood === "sleepy") return;
+      if (stopped || !creature.hatched || menuOpen || reaction === "sleep" || creature.mood === "sleepy") return;
       try {
         const appWindow = getCurrentWindow();
         const monitor = await currentMonitor();
@@ -182,13 +186,27 @@ export default function App() {
       stopped = true;
       if (timer) clearInterval(timer);
     };
-  }, [menuOpen, reaction, creature.mood]);
+  }, [menuOpen, reaction, creature.mood, creature.hatched]);
 
   useEffect(() => {
     return () => {
       if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
+      if (hatchTimer.current) window.clearTimeout(hatchTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!creature.hatched) return;
+    const idle = window.setInterval(() => {
+      if (menuOpen || reaction !== "none") return;
+      const roll = Math.random();
+      if (roll < 0.42) {
+        const next: Reaction = roll < 0.21 ? "peek" : "bounce";
+        setTemporaryReaction(next, next === "peek" ? 1250 : 900);
+      }
+    }, 7200);
+    return () => clearInterval(idle);
+  }, [creature.hatched, menuOpen, reaction]);
 
   function setTemporaryReaction(next: Reaction, duration = 1500) {
     if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
@@ -221,6 +239,21 @@ export default function App() {
       }
       return { ...prev, xp, level };
     });
+  }
+
+  function hatch() {
+    if (hatchPhase !== "egg") return;
+    setHatchPhase("cracking");
+    setMessage("¿...?");
+    burst("star", 5);
+    hatchTimer.current = window.setTimeout(() => {
+      setCreature((prev) => ({ ...prev, hatched: true, happiness: 88, bond: Math.max(prev.bond, 8), mood: "happy" }));
+      setHatchPhase("hatched");
+      setMessage("¡mrrp! ✦");
+      setTemporaryReaction("bounce", 1300);
+      burst("heart", 7);
+      burst("star", 7);
+    }, 1550);
   }
 
   function feed() {
@@ -260,7 +293,7 @@ export default function App() {
     const rect = node.getBoundingClientRect();
     const x = clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1);
     const y = clamp(((event.clientY - rect.top) / rect.height) * 2 - 1, -1, 1);
-    node.style.setProperty("--look-x", String(x * 5) + "px");
+    node.style.setProperty("--look-x", String(x * 5 * direction) + "px");
     node.style.setProperty("--look-y", String(y * 3.5) + "px");
   }
 
@@ -276,7 +309,7 @@ export default function App() {
         stageRef.current?.style.setProperty("--look-x", "0px");
         stageRef.current?.style.setProperty("--look-y", "0px");
       }}
-      onContextMenu={(event) => {
+      onContextMenu={(event: ReactMouseEvent<HTMLElement>) => {
         event.preventDefault();
         setMenuOpen((value) => !value);
       }}
@@ -301,41 +334,54 @@ export default function App() {
         ))}
       </div>
 
-      <button
-        className="creature-hitbox"
-        aria-label="Acariciar a Miko"
-        onClick={pet}
-        onDoubleClick={(event) => {
-          event.stopPropagation();
-          setMenuOpen((value) => !value);
-        }}
-      >
-        <div className="creature-wrap">
-          <div className="floor-shadow" />
-          <div className="miko">
-            <span className="ear ear-left"><i /></span>
-            <span className="ear ear-right"><i /></span>
-            <span className="antenna"><i /></span>
-            <span className="tail" />
+      {hatchPhase === "hatched" ? (
+        <button
+          className="creature-hitbox"
+          aria-label="Acariciar a Miko"
+          onClick={pet}
+          onDoubleClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+            event.stopPropagation();
+            setMenuOpen((value) => !value);
+          }}
+        >
+          <div className="creature-wrap">
+            <div className="floor-shadow" />
+            <div className="miko">
+              <span className="ear ear-left"><i /></span>
+              <span className="ear ear-right"><i /></span>
+              <span className="antenna"><i /></span>
+              <span className="tail" />
 
-            <span className="body">
-              <span className="body-shine" />
-              <span className="belly-glow" />
-              <span className="blush blush-left" />
-              <span className="blush blush-right" />
+              <span className="body">
+                <span className="body-shine" />
+                <span className="belly-glow" />
+                <span className="blush blush-left" />
+                <span className="blush blush-right" />
 
-              <span className="eye eye-left"><i className="pupil" /></span>
-              <span className="eye eye-right"><i className="pupil" /></span>
-              <span className="mouth" />
+                <span className="eye eye-left"><i className="pupil" /></span>
+                <span className="eye eye-right"><i className="pupil" /></span>
+                <span className="mouth" />
 
-              <span className="paw paw-left" />
-              <span className="paw paw-right" />
-            </span>
+                <span className="paw paw-left" />
+                <span className="paw paw-right" />
+              </span>
+            </div>
           </div>
-        </div>
-      </button>
+        </button>
+      ) : (
+        <button className={"egg-hitbox " + hatchPhase} onClick={hatch} aria-label="Eclosionar huevo">
+          <span className="egg-shadow" />
+          <span className="egg">
+            <i className="egg-glow" />
+            <i className="crack crack-a" />
+            <i className="crack crack-b" />
+            <i className="crack crack-c" />
+          </span>
+          <small>{hatchPhase === "egg" ? "tócame" : "..."}</small>
+        </button>
+      )}
 
-      <section className={"panel " + (menuOpen ? "open" : "")}>
+      {hatchPhase === "hatched" && <section className={"panel " + (menuOpen ? "open" : "")} >
         <header>
           <div className="identity">
             <span className="avatar-dot">✦</span>
@@ -366,9 +412,9 @@ export default function App() {
           <div><i style={{ width: String(Math.min(100, (creature.xp / (creature.level * 100)) * 100)) + "%" }} /></div>
           <small>{creature.xp}/{creature.level * 100}</small>
         </div>
-      </section>
+      </section>}
 
-      {!menuOpen && <div className="hint">clic · cariño &nbsp;&nbsp; clic derecho · menú</div>}
+      {!menuOpen && hatchPhase === "hatched" && <div className="hint">clic · cariño &nbsp;&nbsp; clic derecho · menú</div>}
     </main>
   );
 }
