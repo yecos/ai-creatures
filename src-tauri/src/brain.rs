@@ -12,6 +12,7 @@ pub struct BrainConfig {
     pub ollama_url: String,
     pub ollama_model: String,
     pub fallback_to_ollama: bool,
+    pub allow_hermes_tools: bool,
     pub session_key: String,
 }
 
@@ -24,6 +25,7 @@ impl Default for BrainConfig {
             ollama_url: "http://127.0.0.1:11434/v1".into(),
             ollama_model: "qwen3.5:latest".into(),
             fallback_to_ollama: true,
+            allow_hermes_tools: false,
             session_key: "ai-creatures:miko".into(),
         }
     }
@@ -38,6 +40,7 @@ pub struct BrainConfigInput {
     pub ollama_url: String,
     pub ollama_model: String,
     pub fallback_to_ollama: bool,
+    pub allow_hermes_tools: bool,
     pub session_key: String,
 }
 
@@ -50,6 +53,7 @@ pub struct PublicBrainConfig {
     pub ollama_url: String,
     pub ollama_model: String,
     pub fallback_to_ollama: bool,
+    pub allow_hermes_tools: bool,
     pub session_key: String,
 }
 
@@ -59,6 +63,7 @@ pub struct ProviderStatus {
     pub online: bool,
     pub label: String,
     pub detail: String,
+    pub toolsets_enabled: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -83,6 +88,16 @@ pub struct BrainReply {
     pub provider: String,
     pub content: String,
     pub fallback_used: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct ToolsetsResponse {
+    data: Vec<ToolsetEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ToolsetEntry {
+    enabled: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -128,6 +143,7 @@ fn public_config(config: &BrainConfig) -> PublicBrainConfig {
         ollama_url: config.ollama_url.clone(),
         ollama_model: config.ollama_model.clone(),
         fallback_to_ollama: config.fallback_to_ollama,
+        allow_hermes_tools: config.allow_hermes_tools,
         session_key: config.session_key.clone(),
     }
 }
@@ -163,6 +179,7 @@ async fn check_hermes(config: &BrainConfig) -> ProviderStatus {
             online: false,
             label: "Hermes".into(),
             detail: "cliente HTTP no disponible".into(),
+            toolsets_enabled: None,
         };
     };
 
@@ -171,6 +188,7 @@ async fn check_hermes(config: &BrainConfig) -> ProviderStatus {
             online: false,
             label: "Hermes".into(),
             detail: "falta API key".into(),
+            toolsets_enabled: None,
         };
     }
 
@@ -179,21 +197,72 @@ async fn check_hermes(config: &BrainConfig) -> ProviderStatus {
         .bearer_auth(config.hermes_api_key.trim());
 
     match req.send().await {
-        Ok(response) if response.status().is_success() => ProviderStatus {
-            online: true,
-            label: "Hermes".into(),
-            detail: "gateway conectado".into(),
-        },
+        Ok(response) if response.status().is_success() => {
+            match hermes_toolset_count(config).await {
+                Ok(count) => ProviderStatus {
+                    online: true,
+                    label: "Hermes".into(),
+                    detail: if count == 0 {
+                        "conectado · sin herramientas".into()
+                    } else {
+                        format!("conectado · {count} toolsets activos")
+                    },
+                    toolsets_enabled: Some(count),
+                },
+                Err(_) => ProviderStatus {
+                    online: true,
+                    label: "Hermes".into(),
+                    detail: "conectado · herramientas sin verificar".into(),
+                    toolsets_enabled: None,
+                },
+            }
+        }
         Ok(response) => ProviderStatus {
             online: false,
             label: "Hermes".into(),
             detail: format!("HTTP {}", response.status().as_u16()),
+            toolsets_enabled: None,
         },
         Err(_) => ProviderStatus {
             online: false,
             label: "Hermes".into(),
             detail: "sin conexión".into(),
+            toolsets_enabled: None,
         },
+    }
+}
+
+async fn hermes_toolset_count(config: &BrainConfig) -> Result<usize, String> {
+    let client = http_client(4)?;
+    let response = client
+        .get(format!("{}/toolsets", v1_base(&config.hermes_url)))
+        .bearer_auth(config.hermes_api_key.trim())
+        .send()
+        .await
+        .map_err(|_| "No se pudieron verificar las herramientas de Hermes".to_string())?;
+
+    if !response.status().is_success() {
+        return Err(format!("No se pudieron verificar toolsets (HTTP {})", response.status().as_u16()));
+    }
+
+    let payload: ToolsetsResponse = response
+        .json()
+        .await
+        .map_err(|_| "Respuesta de toolsets no válida".to_string())?;
+    Ok(payload.data.into_iter().filter(|item| item.enabled).count())
+}
+
+async fn ensure_hermes_safe(config: &BrainConfig) -> Result<(), String> {
+    if config.allow_hermes_tools {
+        return Ok(());
+    }
+    let count = hermes_toolset_count(config).await?;
+    if count == 0 {
+        Ok(())
+    } else {
+        Err(format!(
+            "Hermes tiene {count} toolsets activos. AI Creatures los bloquea por defecto; usa un perfil Hermes sin herramientas o habilita el modo avanzado."
+        ))
     }
 }
 
@@ -203,6 +272,7 @@ async fn check_ollama(config: &BrainConfig) -> ProviderStatus {
             online: false,
             label: "Ollama".into(),
             detail: "cliente HTTP no disponible".into(),
+            toolsets_enabled: None,
         };
     };
 
@@ -215,16 +285,19 @@ async fn check_ollama(config: &BrainConfig) -> ProviderStatus {
             online: true,
             label: "Ollama".into(),
             detail: config.ollama_model.clone(),
+            toolsets_enabled: None,
         },
         Ok(response) => ProviderStatus {
             online: false,
             label: "Ollama".into(),
             detail: format!("HTTP {}", response.status().as_u16()),
+            toolsets_enabled: None,
         },
         Err(_) => ProviderStatus {
             online: false,
             label: "Ollama".into(),
             detail: "sin conexión".into(),
+            toolsets_enabled: None,
         },
     }
 }
@@ -303,6 +376,7 @@ pub fn save_brain_config(app: AppHandle, input: BrainConfigInput) -> Result<Publ
     config.ollama_url = clean_url(&input.ollama_url);
     config.ollama_model = input.ollama_model.trim().to_string();
     config.fallback_to_ollama = input.fallback_to_ollama;
+    config.allow_hermes_tools = input.allow_hermes_tools;
     config.session_key = input.session_key.trim().to_string();
 
     if let Some(key) = input.hermes_api_key {
@@ -357,7 +431,8 @@ pub async fn brain_status(app: AppHandle) -> BrainStatus {
 pub async fn brain_chat(app: AppHandle, request: BrainRequest) -> Result<BrainReply, String> {
     let config = load_config_inner(&app);
 
-    let hermes_call = || {
+    let hermes_call = || async {
+        ensure_hermes_safe(&config).await?;
         call_openai_compatible(
             &config.hermes_url,
             Some(&config.hermes_api_key),
@@ -366,7 +441,7 @@ pub async fn brain_chat(app: AppHandle, request: BrainRequest) -> Result<BrainRe
             &request.user_prompt,
             Some(&config.session_key),
             true,
-        )
+        ).await
     };
 
     let ollama_call = || {
