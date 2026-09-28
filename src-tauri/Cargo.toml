@@ -1,6 +1,6 @@
 [package]
 name = "ai-creatures"
-version = "0.2.0"
+version = "0.3.0"
 description = "A tiny evolving creature that lives on your desktop"
 authors = ["yecos"]
 edition = "2021"
