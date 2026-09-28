@@ -2,11 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import {
+  chooseIdleReaction,
+  createPersonality,
+  personalityLine,
+  type Mood,
+  type PersonalityProfile
+} from "./personality";
 
-const STORAGE_KEY = "ai-creatures:v0.2";
+const STORAGE_KEY = "ai-creatures:v0.3";
+const LEGACY_STORAGE_KEY = "ai-creatures:v0.2";
 
-type Mood = "idle" | "happy" | "sleepy" | "hungry" | "curious";
-type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce";
+type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce" | "shy" | "wiggle";
 type ParticleKind = "heart" | "star" | "crumb" | "zzz";
 
 type CreatureState = {
@@ -21,6 +28,7 @@ type CreatureState = {
   mood: Mood;
   lastSavedAt: number;
   hatched: boolean;
+  personality: PersonalityProfile | null;
 };
 
 type Particle = {
@@ -42,7 +50,8 @@ const initialState: CreatureState = {
   ageSeconds: 0,
   mood: "curious",
   lastSavedAt: Date.now(),
-  hatched: false
+  hatched: false,
+  personality: null
 };
 
 function clamp(value: number, min = 0, max = 100) {
@@ -51,16 +60,20 @@ function clamp(value: number, min = 0, max = 100) {
 
 function readState(): CreatureState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return initialState;
-    const parsed = JSON.parse(raw) as CreatureState;
-    const awayMinutes = Math.max(0, (Date.now() - parsed.lastSavedAt) / 60000);
+    const parsed = JSON.parse(raw) as Partial<CreatureState>;
+    const awayMinutes = Math.max(0, (Date.now() - (parsed.lastSavedAt ?? Date.now())) / 60000);
+    const personality = parsed.personality ?? (parsed.hatched ? createPersonality() : null);
+    const modifiers = personality?.modifiers;
+
     return {
       ...initialState,
       ...parsed,
-      hunger: clamp(parsed.hunger + awayMinutes * 0.7),
-      energy: clamp(parsed.energy + awayMinutes * 0.45),
-      happiness: clamp(parsed.happiness - awayMinutes * 0.12),
+      personality,
+      hunger: clamp((parsed.hunger ?? initialState.hunger) + awayMinutes * 0.7 * (modifiers?.hungerRate ?? 1)),
+      energy: clamp((parsed.energy ?? initialState.energy) + awayMinutes * 0.45),
+      happiness: clamp((parsed.happiness ?? initialState.happiness) - awayMinutes * 0.12 * (modifiers?.happinessDecay ?? 1)),
       lastSavedAt: Date.now()
     };
   } catch {
@@ -104,12 +117,13 @@ export default function App() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       setCreature((prev) => {
+        const modifiers = prev.personality?.modifiers;
         const next = {
           ...prev,
           ageSeconds: prev.ageSeconds + 1,
-          hunger: clamp(prev.hunger + 0.075),
-          energy: clamp(prev.energy - 0.023),
-          happiness: clamp(prev.happiness - 0.01),
+          hunger: clamp(prev.hunger + 0.075 * (modifiers?.hungerRate ?? 1)),
+          energy: clamp(prev.energy - 0.023 * (modifiers?.energyDrain ?? 1)),
+          happiness: clamp(prev.happiness - 0.01 * (modifiers?.happinessDecay ?? 1)),
           lastSavedAt: Date.now()
         };
         next.mood = getMood(next);
@@ -128,19 +142,13 @@ export default function App() {
 
   useEffect(() => {
     const chatter = window.setInterval(() => {
-      if (menuOpen || reaction !== "none") return;
-      const lines: Record<Mood, string[]> = {
-        curious: ["¿qué hay ahí?", "hmm…", "te estoy mirando", "✦ ✦ ✦"],
-        happy: ["hoy es buen día ✦", "hehe", "¡vamos!", "♡"],
-        hungry: ["¿snack?", "mi pancita…", "ñam?"],
-        sleepy: ["cinco minutitos…", "zzZ", "…"],
-        idle: ["…", "boop", "aquí sigo"]
-      };
-      const options = lines[creature.mood];
-      setMessage(options[Math.floor(Math.random() * options.length)]);
-    }, 8500);
+      if (menuOpen || reaction !== "none" || !creature.hatched) return;
+      const chance = creature.personality?.modifiers.chatterChance ?? .75;
+      if (Math.random() > chance) return;
+      setMessage(personalityLine(creature.personality, creature.mood));
+    }, 7600);
     return () => clearInterval(chatter);
-  }, [creature.mood, menuOpen, reaction]);
+  }, [creature.mood, creature.personality, creature.hatched, menuOpen, reaction]);
 
   useEffect(() => {
     let stopped = false;
@@ -168,8 +176,9 @@ export default function App() {
         if (pos.y >= bottom - 8) dy = -Math.abs(dy || 0.12);
 
         if (Math.random() < 0.014) {
-          dx = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.25);
-          dy = (Math.random() - 0.5) * 0.34;
+          const speed = creature.personality?.modifiers.moveSpeed ?? 1;
+          dx = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.25) * speed;
+          dy = (Math.random() - 0.5) * 0.34 * speed;
         }
 
         moveRef.current = { dx, dy };
@@ -199,14 +208,26 @@ export default function App() {
     if (!creature.hatched) return;
     const idle = window.setInterval(() => {
       if (menuOpen || reaction !== "none") return;
-      const roll = Math.random();
-      if (roll < 0.42) {
-        const next: Reaction = roll < 0.21 ? "peek" : "bounce";
-        setTemporaryReaction(next, next === "peek" ? 1250 : 900);
+      const rate = creature.personality?.modifiers.idleActionRate ?? .42;
+      if (Math.random() > rate) return;
+
+      const next = chooseIdleReaction(creature.personality);
+      setTemporaryReaction(next, next === "sleep" ? 2800 : next === "peek" ? 1250 : 1000);
+
+      if (next === "sleep") {
+        setMessage("zzZ…");
+        burst("zzz", 2);
+      } else if (next === "wiggle" && creature.personality?.id === "affectionate") {
+        setMessage("♡");
+        burst("heart", 2);
+      } else if (next === "shy") {
+        setMessage("…");
+      } else {
+        setMessage(personalityLine(creature.personality, "idle"));
       }
-    }, 7200);
+    }, 6500);
     return () => clearInterval(idle);
-  }, [creature.hatched, menuOpen, reaction]);
+  }, [creature.hatched, creature.personality, menuOpen, reaction]);
 
   function setTemporaryReaction(next: Reaction, duration = 1500) {
     if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
@@ -247,9 +268,17 @@ export default function App() {
     setMessage("¿...?");
     burst("star", 5);
     hatchTimer.current = window.setTimeout(() => {
-      setCreature((prev) => ({ ...prev, hatched: true, happiness: 88, bond: Math.max(prev.bond, 8), mood: "happy" }));
+      const personality = createPersonality();
+      setCreature((prev) => ({
+        ...prev,
+        hatched: true,
+        personality,
+        happiness: 88,
+        bond: Math.max(prev.bond, 8),
+        mood: "happy"
+      }));
       setHatchPhase("hatched");
-      setMessage("¡mrrp! ✦");
+      setMessage(personality.icon + " " + personality.name.toLowerCase());
       setTemporaryReaction("bounce", 1300);
       burst("heart", 7);
       burst("star", 7);
@@ -257,25 +286,45 @@ export default function App() {
   }
 
   function feed() {
-    setCreature((p) => ({ ...p, hunger: clamp(p.hunger - 28), happiness: clamp(p.happiness + 4), mood: "happy" }));
+    setCreature((p) => {
+      const boost = p.personality?.modifiers.feedBoost ?? 1;
+      return { ...p, hunger: clamp(p.hunger - 28), happiness: clamp(p.happiness + 4 * boost), mood: "happy" };
+    });
     gainXp(6);
-    setMessage("crunch crunch ✦");
+    setMessage(creature.personality?.id === "glutton" ? "¡EL MEJOR DÍA! ✦" : "crunch crunch ✦");
     setTemporaryReaction("feed", 1700);
     burst("crumb", 7);
   }
 
   function play() {
-    setCreature((p) => ({ ...p, happiness: clamp(p.happiness + 18), energy: clamp(p.energy - 10), bond: clamp(p.bond + 3), mood: "happy" }));
+    setCreature((p) => {
+      const boost = p.personality?.modifiers.playBoost ?? 1;
+      return {
+        ...p,
+        happiness: clamp(p.happiness + 18 * boost),
+        energy: clamp(p.energy - 10),
+        bond: clamp(p.bond + 3),
+        mood: "happy"
+      };
+    });
     gainXp(9);
-    setMessage("¡otra vez! ✦");
+    setMessage(creature.personality?.id === "mischievous" ? "¡MÁS RÁPIDO! ⚡" : "¡otra vez! ✦");
     setTemporaryReaction("play", 1850);
     burst("star", 9);
   }
 
   function pet() {
-    setCreature((p) => ({ ...p, happiness: clamp(p.happiness + 9), bond: clamp(p.bond + 4), mood: "happy" }));
+    setCreature((p) => {
+      const bondGain = p.personality?.modifiers.petBondGain ?? 1;
+      return {
+        ...p,
+        happiness: clamp(p.happiness + 9),
+        bond: clamp(p.bond + 4 * bondGain),
+        mood: "happy"
+      };
+    });
     gainXp(4);
-    setMessage("mrrp… ♡");
+    setMessage(creature.personality?.id === "shy" ? "…♡" : "mrrp… ♡");
     setTemporaryReaction("pet", 1450);
     burst("heart", 6);
   }
@@ -303,7 +352,7 @@ export default function App() {
     <main
       ref={stageRef}
       style={stageStyle}
-      className={"stage mood-" + creature.mood + " reaction-" + reaction}
+      className={"stage mood-" + creature.mood + " reaction-" + reaction + " personality-" + (creature.personality?.id ?? "unborn")}
       onPointerMove={trackPointer}
       onPointerLeave={() => {
         stageRef.current?.style.setProperty("--look-x", "0px");
@@ -393,6 +442,21 @@ export default function App() {
           <button className="close" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú">×</button>
         </header>
 
+        {creature.personality && (
+          <div className="personality-card" title={creature.personality.description}>
+            <span className="personality-icon">{creature.personality.icon}</span>
+            <div className="personality-copy">
+              <div><b>{creature.personality.name}</b><small>{creature.personality.quirk}</small></div>
+              <span className="favorite">favorito · {creature.personality.favoriteSnack}</span>
+            </div>
+            <div className="trait-pips" aria-label="Rasgos">
+              <TraitPip label="curiosidad" value={creature.personality.traits.curiosity} />
+              <TraitPip label="juego" value={creature.personality.traits.playfulness} />
+              <TraitPip label="afecto" value={creature.personality.traits.affection} />
+            </div>
+          </div>
+        )}
+
         <div className="stats">
           <Stat icon="🍓" value={100 - creature.hunger} label="Saciedad" />
           <Stat icon="⚡" value={creature.energy} label="Energía" />
@@ -416,6 +480,14 @@ export default function App() {
 
       {!menuOpen && hatchPhase === "hatched" && <div className="hint">clic · cariño &nbsp;&nbsp; clic derecho · menú</div>}
     </main>
+  );
+}
+
+function TraitPip({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="trait-pip" title={label}>
+      <i style={{ opacity: .35 + value / 155 }} />
+    </span>
   );
 }
 

@@ -569,3 +569,110 @@ button { font: inherit; }
   45% { transform: translateX(-50%) translateY(-10px) scale(.97,1.03); }
   72% { transform: translateX(-50%) translateY(1px) scale(1.04,.95); }
 }
+
+
+/* ---------------- personality v0.3 ---------------- */
+.personality-card {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 2px;
+  padding: 8px 9px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(255,255,255,.075), rgba(255,255,255,.035));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.personality-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  font-size: 14px;
+  background: linear-gradient(145deg, rgba(139,103,255,.7), rgba(88,220,209,.34));
+  border: 1px solid rgba(255,255,255,.12);
+}
+.personality-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.personality-copy > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.personality-copy b {
+  font-size: 9px;
+  color: #fff;
+}
+.personality-copy small {
+  max-width: 104px;
+  overflow: hidden;
+  color: #b8b7c8;
+  font-size: 7px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.favorite {
+  color: #8f8da2;
+  font-size: 7px;
+  white-space: nowrap;
+}
+.trait-pips {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.trait-pip {
+  display: block;
+  width: 5px;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255,255,255,.07);
+}
+.trait-pip i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(#86f0dd, #826cff);
+  box-shadow: 0 0 8px rgba(102,226,218,.18);
+}
+.reaction-shy .miko { animation: shyHide 1s cubic-bezier(.2,.75,.2,1) 1; }
+.reaction-shy .ear-left { animation: shyEarLeft 1s ease 1; }
+.reaction-shy .ear-right { animation: shyEarRight 1s ease 1; }
+.reaction-wiggle .miko { animation: happyWiggle .48s ease-in-out 2; }
+.reaction-wiggle .tail { animation: tailFast .19s ease-in-out infinite; }
+
+.personality-curious .antenna i { box-shadow: 0 0 18px rgba(100,244,232,.78); }
+.personality-curious .antenna { animation-duration: 2.3s; }
+.personality-affectionate .blush { opacity: .9; transform: scale(1.16); }
+.personality-affectionate .belly-glow { filter: hue-rotate(45deg); }
+.personality-mischievous .tail { animation-duration: 1.55s; }
+.personality-mischievous .miko { animation-duration: 1.65s; }
+.personality-glutton .belly-glow {
+  background: radial-gradient(circle, rgba(255,213,132,.38), rgba(255,190,125,0) 68%);
+}
+.personality-shy .ear-left { transform: rotate(-34deg); }
+.personality-shy .ear-right { transform: rotate(34deg); }
+.personality-sleepy .body { filter: saturate(.88); }
+.personality-sleepy .miko { animation-duration: 3.2s; }
+
+@keyframes shyHide {
+  0%,100% { transform: translateX(-50%) translateY(0) scale(1); }
+  35% { transform: translateX(-50%) translateY(8px) scale(.92,.86) rotate(-2deg); }
+  68% { transform: translateX(-50%) translateY(5px) scale(.95,.9) rotate(2deg); }
+}
+@keyframes shyEarLeft { 0%,100% { transform: rotate(-34deg); } 42% { transform: rotate(-58deg); } }
+@keyframes shyEarRight { 0%,100% { transform: rotate(34deg); } 42% { transform: rotate(58deg); } }
+@keyframes happyWiggle {
+  0%,100% { transform: translateX(-50%) rotate(0deg) scale(1); }
+  25% { transform: translateX(-50%) rotate(-5deg) scale(1.02,.98); }
+  75% { transform: translateX(-50%) rotate(5deg) scale(.98,1.02); }
+}

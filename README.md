@@ -2,7 +2,7 @@
 
 A tiny evolving creature that actually lives on your desktop.
 
-**v0.2 visual** focuses on one thing first: Miko should feel alive and delightful before adding AI.
+**v0.3 personality** gives every Miko a persistent temperament that changes how it behaves.
 
 ## What already works
 
@@ -11,6 +11,9 @@ A tiny evolving creature that actually lives on your desktop.
 - Creature wanders around the active monitor
 - Mood/state machine: idle, curious, hungry, sleepy and happy
 - Premium animated Miko: breathing, blinking, eye tracking, ear/tail motion and squash & stretch
+- Six persistent personality archetypes: curious, affectionate, mischievous, glutton, shy and sleepy
+- Personality changes movement, chatter, appetite, playfulness, bonding and autonomous actions
+- Each Miko gets a small unique quirk and favorite snack
 - Interaction effects: hearts, crumbs, stars and sleep particles
 - Hunger, energy, happiness, bond, XP and levels
 - Feed, play, pet and sleep interactions
@@ -24,7 +27,7 @@ A tiny evolving creature that actually lives on your desktop.
 - Tauri 2 / Rust
 - React 19 + TypeScript
 - Vite
-- LocalStorage for v0.2 state
+- LocalStorage for v0.3 state
 
 SQLite and Ollama are intentionally deferred until the core creature loop feels good.
 
@@ -70,26 +73,25 @@ Miko is currently a soft alien/slime creature with:
 
 ## Roadmap
 
-### v0.3 — Personality
-- Personality traits
-- Better autonomous behavior
-- Random events
-- Sleep/wake cycle
-- Small inventory
+### v0.4 — Life events
+- Daily rhythm and real sleep/wake cycle
+- Random discoveries and tiny events
+- Small inventory and favorite objects
+- Short event history
 
-### v0.4 — AI Brain
+### v0.5 — AI Brain
 - Ollama support
 - Short and long-term memory
 - Creature speech based on personality, not assistant behavior
 - Optional cloud-model adapters
 
-### v0.5 — Evolution
+### v0.6 — Evolution
 - Hidden evolution conditions
 - Visual mutations
 - Species branches
 - Genetics
 
-### v0.6 — Ecosystem
+### v0.7 — Ecosystem
 - Multiple creatures
 - Relationships
 - Rivalry / friendship
