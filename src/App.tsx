@@ -9,9 +9,21 @@ import {
   type Mood,
   type PersonalityProfile
 } from "./personality";
+import {
+  createEvent,
+  dayPhaseMeta,
+  discoverTreasure,
+  discoveryChance,
+  discoveryMessage,
+  getDayPhase,
+  rarityLabel,
+  type DayPhase,
+  type LifeEvent,
+  type Treasure
+} from "./life";
 
-const STORAGE_KEY = "ai-creatures:v0.3";
-const LEGACY_STORAGE_KEY = "ai-creatures:v0.2";
+const STORAGE_KEY = "ai-creatures:v0.4";
+const LEGACY_STORAGE_KEYS = ["ai-creatures:v0.3", "ai-creatures:v0.2"];
 
 type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce" | "shy" | "wiggle";
 type ParticleKind = "heart" | "star" | "crumb" | "zzz";
@@ -29,6 +41,9 @@ type CreatureState = {
   lastSavedAt: number;
   hatched: boolean;
   personality: PersonalityProfile | null;
+  treasures: Treasure[];
+  journal: LifeEvent[];
+  lastDiscoveryAt: number;
 };
 
 type Particle = {
@@ -51,7 +66,10 @@ const initialState: CreatureState = {
   mood: "curious",
   lastSavedAt: Date.now(),
   hatched: false,
-  personality: null
+  personality: null,
+  treasures: [],
+  journal: [],
+  lastDiscoveryAt: 0
 };
 
 function clamp(value: number, min = 0, max = 100) {
@@ -60,17 +78,31 @@ function clamp(value: number, min = 0, max = 100) {
 
 function readState(): CreatureState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY)
+      ?? LEGACY_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean)
+      ?? null;
     if (!raw) return initialState;
+
     const parsed = JSON.parse(raw) as Partial<CreatureState>;
     const awayMinutes = Math.max(0, (Date.now() - (parsed.lastSavedAt ?? Date.now())) / 60000);
     const personality = parsed.personality ?? (parsed.hatched ? createPersonality() : null);
     const modifiers = personality?.modifiers;
+    let journal = parsed.journal ?? [];
+
+    if (parsed.hatched && awayMinutes >= 30) {
+      const returnMessage = awayMinutes >= 240
+        ? "Miko se emocionó mucho cuando volviste."
+        : "Miko notó que regresaste.";
+      journal = [createEvent(returnMessage, "return"), ...journal].slice(0, 8);
+    }
 
     return {
       ...initialState,
       ...parsed,
       personality,
+      treasures: parsed.treasures ?? [],
+      journal,
+      lastDiscoveryAt: parsed.lastDiscoveryAt ?? 0,
       hunger: clamp((parsed.hunger ?? initialState.hunger) + awayMinutes * 0.7 * (modifiers?.hungerRate ?? 1)),
       energy: clamp((parsed.energy ?? initialState.energy) + awayMinutes * 0.45),
       happiness: clamp((parsed.happiness ?? initialState.happiness) - awayMinutes * 0.12 * (modifiers?.happinessDecay ?? 1)),
@@ -103,6 +135,8 @@ function moodLabel(mood: Mood) {
 export default function App() {
   const [creature, setCreature] = useState<CreatureState>(() => readState());
   const [menuOpen, setMenuOpen] = useState(false);
+  const [panelView, setPanelView] = useState<"main" | "treasures">("main");
+  const [dayPhase, setDayPhase] = useState<DayPhase>(() => getDayPhase());
   const [message, setMessage] = useState("hola ✦");
   const [reaction, setReaction] = useState<Reaction>("none");
   const [hatchPhase, setHatchPhase] = useState<"egg" | "cracking" | "hatched">(() => creature.hatched ? "hatched" : "egg");
@@ -139,6 +173,11 @@ export default function App() {
     }, 3000);
     return () => clearInterval(save);
   }, [creature]);
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setDayPhase(getDayPhase()), 60000);
+    return () => clearInterval(clock);
+  }, []);
 
   useEffect(() => {
     const chatter = window.setInterval(() => {
@@ -211,7 +250,8 @@ export default function App() {
       const rate = creature.personality?.modifiers.idleActionRate ?? .42;
       if (Math.random() > rate) return;
 
-      const next = chooseIdleReaction(creature.personality);
+      let next = chooseIdleReaction(creature.personality);
+      if (dayPhase === "night" && Math.random() < .24) next = "sleep";
       setTemporaryReaction(next, next === "sleep" ? 2800 : next === "peek" ? 1250 : 1000);
 
       if (next === "sleep") {
@@ -227,7 +267,34 @@ export default function App() {
       }
     }, 6500);
     return () => clearInterval(idle);
-  }, [creature.hatched, creature.personality, menuOpen, reaction]);
+  }, [creature.hatched, creature.personality, dayPhase, menuOpen, reaction]);
+
+  useEffect(() => {
+    if (!creature.hatched || creature.treasures.length >= 10) return;
+
+    const discovery = window.setInterval(() => {
+      if (reaction === "sleep" || creature.energy < 14) return;
+      if (Date.now() - creature.lastDiscoveryAt < 30000) return;
+      if (Math.random() > discoveryChance(dayPhase, creature.personality)) return;
+
+      const item = discoverTreasure(creature.treasures.map((treasure) => treasure.id), creature.personality);
+      if (!item) return;
+
+      const event = createEvent("Encontró " + item.name + ".", "discovery");
+      setCreature((prev) => ({
+        ...prev,
+        treasures: [item, ...prev.treasures].slice(0, 10),
+        journal: [event, ...prev.journal].slice(0, 8),
+        lastDiscoveryAt: Date.now()
+      }));
+      setMessage(discoveryMessage(item, creature.personality));
+      setTemporaryReaction(creature.personality?.id === "shy" ? "shy" : "bounce", 1350);
+      burst(item.rarity === "mystery" ? "star" : item.rarity === "rare" ? "heart" : "star", item.rarity === "mystery" ? 12 : 6);
+      gainXp(item.rarity === "mystery" ? 24 : item.rarity === "rare" ? 16 : 10);
+    }, 45000);
+
+    return () => clearInterval(discovery);
+  }, [creature.hatched, creature.treasures, creature.lastDiscoveryAt, creature.personality, creature.energy, dayPhase, reaction]);
 
   function setTemporaryReaction(next: Reaction, duration = 1500) {
     if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
@@ -275,7 +342,9 @@ export default function App() {
         personality,
         happiness: 88,
         bond: Math.max(prev.bond, 8),
-        mood: "happy"
+        mood: "happy",
+        lastDiscoveryAt: Date.now(),
+        journal: [createEvent("Miko nació.", "moment"), ...prev.journal].slice(0, 8)
       }));
       setHatchPhase("hatched");
       setMessage(personality.icon + " " + personality.name.toLowerCase());
@@ -347,12 +416,13 @@ export default function App() {
   }
 
   const stageStyle = { "--direction": direction } as CSSProperties;
+  const phase = dayPhaseMeta(dayPhase);
 
   return (
     <main
       ref={stageRef}
       style={stageStyle}
-      className={"stage mood-" + creature.mood + " reaction-" + reaction + " personality-" + (creature.personality?.id ?? "unborn")}
+      className={"stage mood-" + creature.mood + " reaction-" + reaction + " personality-" + (creature.personality?.id ?? "unborn") + " phase-" + dayPhase}
       onPointerMove={trackPointer}
       onPointerLeave={() => {
         stageRef.current?.style.setProperty("--look-x", "0px");
@@ -360,6 +430,7 @@ export default function App() {
       }}
       onContextMenu={(event: ReactMouseEvent<HTMLElement>) => {
         event.preventDefault();
+        setPanelView("main");
         setMenuOpen((value) => !value);
       }}
     >
@@ -436,12 +507,22 @@ export default function App() {
             <span className="avatar-dot">✦</span>
             <div>
               <strong>{creature.name}</strong>
-              <span>Nivel {creature.level} · {moodLabel(creature.mood)}</span>
+              <span>Nivel {creature.level} · {moodLabel(creature.mood)} · {phase.icon} {phase.label}</span>
             </div>
           </div>
-          <button className="close" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú">×</button>
+          <button
+            className="close"
+            onClick={() => {
+              if (panelView === "treasures") setPanelView("main");
+              else setMenuOpen(false);
+            }}
+            aria-label={panelView === "treasures" ? "Volver" : "Cerrar menú"}
+          >
+            {panelView === "treasures" ? "‹" : "×"}
+          </button>
         </header>
 
+        {panelView === "main" ? <>
         {creature.personality && (
           <div className="personality-card" title={creature.personality.description}>
             <span className="personality-icon">{creature.personality.icon}</span>
@@ -471,15 +552,65 @@ export default function App() {
           <button onClick={sleep}><span>☾</span>Dormir</button>
         </div>
 
+        <button className="treasure-button" onClick={() => setPanelView("treasures")}>
+          <span>🎒</span>
+          <div>
+            <b>Tesoros</b>
+            <small>{creature.treasures.length ? creature.treasures[0].name : "Miko todavía no ha encontrado nada"}</small>
+          </div>
+          <i>{creature.treasures.length}/10</i>
+        </button>
+
         <div className="xp">
           <span>XP</span>
           <div><i style={{ width: String(Math.min(100, (creature.xp / (creature.level * 100)) * 100)) + "%" }} /></div>
           <small>{creature.xp}/{creature.level * 100}</small>
         </div>
+        </> : (
+          <TreasureView treasures={creature.treasures} journal={creature.journal} />
+        )}
       </section>}
 
       {!menuOpen && hatchPhase === "hatched" && <div className="hint">clic · cariño &nbsp;&nbsp; clic derecho · menú</div>}
     </main>
+  );
+}
+
+function TreasureView({ treasures, journal }: { treasures: Treasure[]; journal: LifeEvent[] }) {
+  return (
+    <div className="treasure-view">
+      <div className="treasure-heading">
+        <div>
+          <b>Colección</b>
+          <span>{treasures.length}/10 descubrimientos</span>
+        </div>
+        <span>✦</span>
+      </div>
+
+      <div className="treasure-grid">
+        {treasures.length ? treasures.map((item) => (
+          <div className={"treasure-item rarity-" + item.rarity} key={item.id} title={item.flavor}>
+            <span>{item.icon}</span>
+            <div>
+              <b>{item.name}</b>
+              <small>{rarityLabel(item.rarity)}</small>
+            </div>
+          </div>
+        )) : (
+          <div className="empty-treasures">Miko saldrá a explorar por su cuenta.</div>
+        )}
+      </div>
+
+      <div className="journal">
+        <b>Últimos momentos</b>
+        {journal.length ? journal.slice(0, 4).map((event) => (
+          <div key={event.id}>
+            <span>{new Date(event.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+            <p>{event.message}</p>
+          </div>
+        )) : <small>Aquí aparecerá su pequeña historia.</small>}
+      </div>
+    </div>
   );
 }
 
