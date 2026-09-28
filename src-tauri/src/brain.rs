@@ -4,7 +4,7 @@ use std::{fs, path::PathBuf, time::Duration};
 use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct BrainConfig {
     pub mode: String,
     pub hermes_url: String,
@@ -161,10 +161,6 @@ fn v1_base(url: &str) -> String {
     }
 }
 
-fn root_base(url: &str) -> String {
-    let clean = clean_url(url);
-    clean.strip_suffix("/v1").unwrap_or(&clean).to_string()
-}
 
 fn http_client(timeout_secs: u64) -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
