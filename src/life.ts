@@ -113,6 +113,8 @@ export function discoveryMessage(item: Treasure, profile: PersonalityProfile | n
     case "sleepy":
       return "lo encontré medio dormido " + item.icon;
   }
+
+  return "¡Miko encontró " + item.name + "!";
 }
 
 export function discoveryChance(phase: DayPhase, profile: PersonalityProfile | null) {
