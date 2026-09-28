@@ -676,3 +676,118 @@ button { font: inherit; }
   25% { transform: translateX(-50%) rotate(-5deg) scale(1.02,.98); }
   75% { transform: translateX(-50%) rotate(5deg) scale(.98,1.02); }
 }
+
+
+/* ---------------- life events v0.4 ---------------- */
+.treasure-button {
+  width: 100%;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 12px;
+  padding: 7px 8px;
+  color: #f8f7ff;
+  background: linear-gradient(135deg, rgba(121,96,255,.11), rgba(87,219,208,.06));
+  cursor: pointer;
+  text-align: left;
+}
+.treasure-button > span { font-size: 15px; }
+.treasure-button > div { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.treasure-button b { font-size: 9px; }
+.treasure-button small {
+  overflow: hidden;
+  color: #9e9daf;
+  font-size: 7px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.treasure-button > i {
+  color: #a8a6bb;
+  font-size: 8px;
+  font-style: normal;
+}
+.treasure-view { margin-top: 10px; }
+.treasure-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.treasure-heading > div { display: flex; flex-direction: column; }
+.treasure-heading b { font-size: 10px; }
+.treasure-heading span { color: #aaa9ba; font-size: 8px; }
+.treasure-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  max-height: 106px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.treasure-grid::-webkit-scrollbar { width: 3px; }
+.treasure-grid::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(255,255,255,.14); }
+.treasure-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  background: rgba(255,255,255,.045);
+}
+.treasure-item > span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+  font-size: 12px;
+}
+.treasure-item > div { min-width: 0; display: flex; flex-direction: column; }
+.treasure-item b {
+  overflow: hidden;
+  font-size: 7px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.treasure-item small { color: #9290a5; font-size: 6px; }
+.rarity-uncommon { border-color: rgba(105,217,209,.18); }
+.rarity-rare { border-color: rgba(163,125,255,.28); box-shadow: inset 0 0 12px rgba(126,91,255,.05); }
+.rarity-mystery { border-color: rgba(255,224,137,.32); box-shadow: 0 0 12px rgba(255,223,137,.07), inset 0 0 12px rgba(140,112,255,.08); }
+.empty-treasures {
+  grid-column: 1 / -1;
+  padding: 22px 10px;
+  color: #9694a6;
+  font-size: 8px;
+  text-align: center;
+  border: 1px dashed rgba(255,255,255,.09);
+  border-radius: 11px;
+}
+.journal {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.journal > b { display: block; margin-bottom: 4px; font-size: 8px; color: #d9d8e2; }
+.journal > div {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+.journal > div span { color: #787689; font-size: 6px; }
+.journal p { margin: 0; color: #aaa8b8; font-size: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.journal > small { color: #868497; font-size: 7px; }
+
+.phase-morning .antenna i { box-shadow: 0 0 16px rgba(255,224,150,.55); }
+.phase-day .antenna i { box-shadow: 0 0 16px rgba(111,244,224,.55); }
+.phase-evening .antenna i { box-shadow: 0 0 17px rgba(255,159,196,.52); }
+.phase-night .antenna i { box-shadow: 0 0 18px rgba(143,128,255,.62); }
+.phase-night .body { box-shadow: inset 0 1px 1px rgba(255,255,255,.66), inset -15px -18px 24px rgba(49,38,132,.25), 0 20px 35px rgba(24,21,70,.28), 0 0 34px rgba(112,100,255,.2); }
