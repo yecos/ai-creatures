@@ -17,6 +17,7 @@ A tiny evolving creature that actually lives on your desktop.
 - Local persistence between sessions
 - Offline progress while the app is closed
 - Browser fallback for frontend development
+- GitHub Actions CI for every push and pull request
 
 ## Stack
 
@@ -55,6 +56,17 @@ npm run dev
 - Click creature: pet it
 - Right click: open/close creature menu
 - Double click: open/close menu
+
+## Visual personality
+
+Miko is currently a soft alien/slime creature with:
+
+- reactive eyes that follow the pointer
+- autonomous blinking and ear movement
+- glowing antenna and belly
+- animated tail
+- squash-and-stretch reactions
+- contextual particles for petting, eating, playing and sleeping
 
 ## Roadmap
 
