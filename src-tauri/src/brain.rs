@@ -229,9 +229,10 @@ async fn call_openai_compatible(
     system_prompt: &str,
     user_prompt: &str,
     session_key: Option<&str>,
+    disable_tools: bool,
 ) -> Result<String, String> {
     let client = http_client(45)?;
-    let body = json!({
+    let mut body = json!({
         "model": model,
         "messages": [
             { "role": "system", "content": system_prompt },
@@ -239,9 +240,12 @@ async fn call_openai_compatible(
         ],
         "stream": false,
         "temperature": 0.8,
-        "max_tokens": 100,
-        "tool_choice": "none"
+        "max_tokens": 100
     });
+
+    if disable_tools {
+        body["tool_choice"] = json!("none");
+    }
 
     let mut req = client
         .post(format!("{}/chat/completions", v1_base(base_url)))
@@ -322,7 +326,8 @@ pub fn save_brain_config(app: AppHandle, input: BrainConfigInput) -> Result<Publ
 #[tauri::command]
 pub async fn brain_status(app: AppHandle) -> BrainStatus {
     let config = load_config_inner(&app);
-    let (hermes, ollama) = tokio::join!(check_hermes(&config), check_ollama(&config));
+    let hermes = check_hermes(&config).await;
+    let ollama = check_ollama(&config).await;
 
     let active_mode = match config.mode.as_str() {
         "hermes" if hermes.online => "hermes",
@@ -353,6 +358,7 @@ pub async fn brain_chat(app: AppHandle, request: BrainRequest) -> Result<BrainRe
             &request.system_prompt,
             &request.user_prompt,
             Some(&config.session_key),
+            true,
         )
     };
 
@@ -364,6 +370,7 @@ pub async fn brain_chat(app: AppHandle, request: BrainRequest) -> Result<BrainRe
             &request.system_prompt,
             &request.user_prompt,
             None,
+            false,
         )
     };
 
