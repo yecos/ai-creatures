@@ -793,19 +793,34 @@ function BrainView({
       )}
 
       {(config.mode === "hermes" || config.mode === "auto") && (
-        <label className="brain-toggle">
-          <input
-            type="checkbox"
-            checked={config.fallbackToOllama}
-            onChange={(e) => patch({ fallbackToOllama: e.target.checked })}
-          />
-          <span>Usar Ollama si Hermes no responde</span>
-        </label>
+        <>
+          <label className="brain-toggle">
+            <input
+              type="checkbox"
+              checked={config.fallbackToOllama}
+              onChange={(e) => patch({ fallbackToOllama: e.target.checked })}
+            />
+            <span>Usar Ollama si Hermes no responde</span>
+          </label>
+
+          <label className="brain-toggle brain-toggle-danger">
+            <input
+              type="checkbox"
+              checked={config.allowHermesTools}
+              onChange={(e) => patch({ allowHermesTools: e.target.checked })}
+            />
+            <span>Permitir Hermes aunque tenga herramientas activas</span>
+          </label>
+        </>
       )}
 
-      <div className="brain-safe">
-        <span>🔒</span>
-        <p>Modo mascota: respuestas cortas y solicitud sin herramientas.</p>
+      <div className={"brain-safe " + ((status?.hermes.toolsetsEnabled ?? 0) > 0 && !config.allowHermesTools ? "blocked" : "")}>
+        <span>{(status?.hermes.toolsetsEnabled ?? 0) > 0 && !config.allowHermesTools ? "🛑" : "🔒"}</span>
+        <p>
+          {(status?.hermes.toolsetsEnabled ?? 0) > 0 && !config.allowHermesTools
+            ? "Hermes tiene herramientas activas: AI Creatures lo bloqueará y usará fallback."
+            : "Modo mascota: Hermes solo se usa si no expone herramientas, salvo autorización avanzada."}
+        </p>
       </div>
 
       {error && <div className="brain-error">{error}</div>}
