@@ -293,7 +293,7 @@ export default function App() {
     const rect = node.getBoundingClientRect();
     const x = clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1);
     const y = clamp(((event.clientY - rect.top) / rect.height) * 2 - 1, -1, 1);
-    node.style.setProperty("--look-x", String(x * 5) + "px");
+    node.style.setProperty("--look-x", String(x * 5 * direction) + "px");
     node.style.setProperty("--look-y", String(y * 3.5) + "px");
   }
 
