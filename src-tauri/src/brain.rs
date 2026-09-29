@@ -101,16 +101,6 @@ struct ToolsetEntry {
 }
 
 #[derive(Debug, Deserialize)]
-struct ModelListResponse {
-    data: Vec<ModelItem>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ModelItem {
-    id: String,
-}
-
-#[derive(Debug, Deserialize)]
 struct ChatResponse {
     choices: Vec<ChatChoice>,
 }
@@ -256,33 +246,6 @@ async fn hermes_toolset_count(config: &BrainConfig) -> Result<usize, String> {
         .await
         .map_err(|_| "Respuesta de toolsets no válida".to_string())?;
     Ok(payload.data.into_iter().filter(|item| item.enabled).count())
-}
-
-async fn hermes_model_name(config: &BrainConfig) -> Result<String, String> {
-    let client = http_client(4)?;
-    let response = client
-        .get(format!("{}/models", v1_base(&config.hermes_url)))
-        .bearer_auth(config.hermes_api_key.trim())
-        .send()
-        .await
-        .map_err(|_| "No se pudo consultar el modelo de Hermes".to_string())?;
-
-    if !response.status().is_success() {
-        return Err(format!("No se pudo consultar /v1/models (HTTP {})", response.status().as_u16()));
-    }
-
-    let payload: ModelListResponse = response
-        .json()
-        .await
-        .map_err(|_| "Respuesta de modelos Hermes no válida".to_string())?;
-
-    payload
-        .data
-        .into_iter()
-        .next()
-        .map(|item| item.id)
-        .filter(|id| !id.trim().is_empty())
-        .ok_or_else(|| "Hermes no anunció ningún modelo".to_string())
 }
 
 async fn ensure_hermes_safe(config: &BrainConfig) -> Result<(), String> {
@@ -466,13 +429,13 @@ pub async fn brain_chat(app: AppHandle, request: BrainRequest) -> Result<BrainRe
 
     let hermes_call = || async {
         ensure_hermes_safe(&config).await?;
-        let model = hermes_model_name(&config)
-            .await
-            .unwrap_or_else(|_| "hermes-agent".into());
+        // "hermes-agent" is Hermes' virtual model name. The gateway resolves it
+        // to its active/default server-side model, so AI Creatures never selects
+        // or pins a concrete LLM for Hermes.
         call_openai_compatible(
             &config.hermes_url,
             Some(&config.hermes_api_key),
-            &model,
+            "hermes-agent",
             &request.system_prompt,
             &request.user_prompt,
             Some(&config.session_key),
