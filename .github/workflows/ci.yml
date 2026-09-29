@@ -28,5 +28,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
       - name: Check Tauri backend
         run: cargo check --manifest-path src-tauri/Cargo.toml
