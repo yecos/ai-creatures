@@ -264,7 +264,9 @@ export default function App() {
         if (pos.y >= bottom - 8) dy = -Math.abs(dy || 0.12);
 
         if (Math.random() < 0.014) {
-          const speed = creature.personality?.modifiers.moveSpeed ?? 1;
+          const personalitySpeed = creature.personality?.modifiers.moveSpeed ?? 1;
+          const evolvedSpeed = evolutionModifiers(creature.evolution.form).moveSpeed;
+          const speed = personalitySpeed * evolvedSpeed;
           dx = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.25) * speed;
           dy = (Math.random() - 0.5) * 0.34 * speed;
         }
