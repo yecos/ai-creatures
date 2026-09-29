@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
+import { availableMonitors, currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import {
   chooseIdleReaction,
@@ -42,9 +42,22 @@ import {
   type CareStats,
   type EvolutionState
 } from "./evolution";
+import {
+  canHaveOffspring,
+  createOffspring,
+  createVisitor,
+  ecosystemPromptSummary,
+  giveGift,
+  initialEcosystemState,
+  relationLabel,
+  relationTone,
+  socialize,
+  type EcosystemState,
+  type SocialCreature
+} from "./ecosystem";
 
-const STORAGE_KEY = "ai-creatures:v0.6";
-const LEGACY_STORAGE_KEYS = ["ai-creatures:v0.4", "ai-creatures:v0.3", "ai-creatures:v0.2"];
+const STORAGE_KEY = "ai-creatures:v0.7";
+const LEGACY_STORAGE_KEYS = ["ai-creatures:v0.6", "ai-creatures:v0.4", "ai-creatures:v0.3", "ai-creatures:v0.2"];
 
 type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce" | "shy" | "wiggle" | "evolve";
 type ParticleKind = "heart" | "star" | "crumb" | "zzz";
@@ -66,6 +79,7 @@ type CreatureState = {
   journal: LifeEvent[];
   lastDiscoveryAt: number;
   evolution: EvolutionState;
+  ecosystem: EcosystemState;
 };
 
 type Particle = {
@@ -92,7 +106,8 @@ const initialState: CreatureState = {
   treasures: [],
   journal: [],
   lastDiscoveryAt: 0,
-  evolution: initialEvolutionState
+  evolution: initialEvolutionState,
+  ecosystem: initialEcosystemState
 };
 
 function clamp(value: number, min = 0, max = 100) {
@@ -111,6 +126,7 @@ function readState(): CreatureState {
     const personality = parsed.personality ?? (parsed.hatched ? createPersonality() : null);
     const modifiers = personality?.modifiers;
     const evolution = parsed.evolution ?? initialEvolutionState;
+    const ecosystem = parsed.ecosystem ?? initialEcosystemState;
     const evolvedModifiers = evolutionModifiers(evolution.form);
     let journal = parsed.journal ?? [];
 
@@ -129,6 +145,7 @@ function readState(): CreatureState {
       journal,
       lastDiscoveryAt: parsed.lastDiscoveryAt ?? 0,
       evolution,
+      ecosystem,
       hunger: clamp((parsed.hunger ?? initialState.hunger) + awayMinutes * 0.7 * (modifiers?.hungerRate ?? 1)),
       energy: clamp((parsed.energy ?? initialState.energy) + awayMinutes * 0.45),
       happiness: clamp((parsed.happiness ?? initialState.happiness) - awayMinutes * 0.12 * (modifiers?.happinessDecay ?? 1) * evolvedModifiers.happinessDecay),
@@ -161,7 +178,7 @@ function moodLabel(mood: Mood) {
 export default function App() {
   const [creature, setCreature] = useState<CreatureState>(() => readState());
   const [menuOpen, setMenuOpen] = useState(false);
-  const [panelView, setPanelView] = useState<"main" | "treasures" | "brain" | "chat">("main");
+  const [panelView, setPanelView] = useState<"main" | "treasures" | "brain" | "chat" | "ecosystem">("main");
   const [dayPhase, setDayPhase] = useState<DayPhase>(() => getDayPhase());
   const [brainConfig, setBrainConfig] = useState<PublicBrainConfig>(defaultBrainConfig);
   const [brainStatus, setBrainStatus] = useState<BrainStatus | null>(null);
@@ -180,6 +197,7 @@ export default function App() {
   const particleId = useRef(0);
   const hatchTimer = useRef<number | null>(null);
   const evolutionTimer = useRef<number | null>(null);
+  const visitorTimer = useRef<number | null>(null);
   const evolutionPendingRef = useRef(false);
   const creatureRef = useRef(creature);
   const brainThinkingRef = useRef(false);
@@ -292,6 +310,7 @@ export default function App() {
       if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
       if (hatchTimer.current) window.clearTimeout(hatchTimer.current);
       if (evolutionTimer.current) window.clearTimeout(evolutionTimer.current);
+      if (visitorTimer.current) window.clearTimeout(visitorTimer.current);
     };
   }, []);
 
@@ -415,6 +434,67 @@ export default function App() {
     creature.treasures
   ]);
 
+
+  useEffect(() => {
+    if (!creature.hatched || creature.level < 2) return;
+
+    const encounters = window.setInterval(() => {
+      const current = creatureRef.current;
+      if (!current.hatched || current.ecosystem.activeVisitorId) return;
+      if (Date.now() - current.ecosystem.lastEncounterAt < 60000) return;
+      if (current.energy < 20 || Math.random() > .42) return;
+
+      const known = current.ecosystem.known;
+      const shouldMeetNew = known.length === 0 || (known.length < 8 && Math.random() < .46);
+      const visitor = shouldMeetNew
+        ? createVisitor(known)
+        : known[Math.floor(Math.random() * known.length)];
+
+      setCreature((prev) => {
+        const exists = prev.ecosystem.known.some((item) => item.id === visitor.id);
+        return {
+          ...prev,
+          ecosystem: {
+            ...prev.ecosystem,
+            known: exists ? prev.ecosystem.known : [visitor, ...prev.ecosystem.known].slice(0, 12),
+            activeVisitorId: visitor.id,
+            lastEncounterAt: Date.now()
+          },
+          journal: [
+            createEvent(visitor.name + " vino a visitar a Miko.", "moment"),
+            ...prev.journal
+          ].slice(0, 8)
+        };
+      });
+
+      setMessage(visitor.name + " vino de visita ✦");
+      burst("star", 5);
+
+      if (visitorTimer.current) window.clearTimeout(visitorTimer.current);
+      visitorTimer.current = window.setTimeout(() => {
+        setCreature((prev) => ({
+          ...prev,
+          ecosystem: { ...prev.ecosystem, activeVisitorId: null }
+        }));
+      }, 28000);
+    }, 45000);
+
+    return () => clearInterval(encounters);
+  }, [creature.hatched, creature.level]);
+
+  useEffect(() => {
+    if (!creature.hatched || !creature.ecosystem.autoTravel || creature.level < 3) return;
+
+    const travel = window.setInterval(() => {
+      const current = creatureRef.current;
+      if (!current.ecosystem.autoTravel || current.energy < 35 || menuOpen || reaction !== "none") return;
+      if (Math.random() > .18) return;
+      void travelToAnotherMonitor(false);
+    }, 120000);
+
+    return () => clearInterval(travel);
+  }, [creature.hatched, creature.level, creature.ecosystem.autoTravel, menuOpen, reaction]);
+
   function addCare(kind: keyof CareStats) {
     setCreature((prev) => ({
       ...prev,
@@ -506,7 +586,8 @@ export default function App() {
         ? "Forma evolucionada: " + (evolutionForm(current.evolution.form)?.name ?? current.evolution.form) + ". " + (evolutionForm(current.evolution.form)?.description ?? "")
         : "Aún no ha evolucionado.",
       "Tesoros: " + treasures + ".",
-      "Recuerdos recientes: " + recent + "."
+      "Recuerdos recientes: " + recent + ".",
+      ecosystemPromptSummary(current.ecosystem)
     ].filter(Boolean).join("\n");
 
     return {
@@ -564,6 +645,140 @@ export default function App() {
   function openBrainPanel() {
     setPanelView("brain");
     void refreshBrain();
+  }
+
+  function openEcosystemPanel() {
+    setPanelView("ecosystem");
+  }
+
+  function socializeWithVisitor() {
+    const current = creatureRef.current;
+    const visitor = current.ecosystem.known.find((item) => item.id === current.ecosystem.activeVisitorId);
+    if (!visitor) return;
+
+    const result = socialize(visitor, current.personality);
+    setCreature((prev) => ({
+      ...prev,
+      happiness: clamp(prev.happiness + (result.positive ? 5 : 1)),
+      ecosystem: {
+        ...prev.ecosystem,
+        known: prev.ecosystem.known.map((item) => item.id === result.creature.id ? result.creature : item)
+      },
+      journal: [createEvent(result.message, "moment"), ...prev.journal].slice(0, 8)
+    }));
+    setMessage(result.message);
+    setTemporaryReaction(result.positive ? "wiggle" : "peek", 1300);
+    burst(result.positive ? "heart" : "star", result.positive ? 5 : 3);
+    gainXp(result.positive ? 8 : 4);
+  }
+
+  function giftVisitor(id: string) {
+    const current = creatureRef.current;
+    const visitor = current.ecosystem.known.find((item) => item.id === id);
+    if (!visitor) return;
+
+    const updated = giveGift(visitor);
+    setCreature((prev) => ({
+      ...prev,
+      ecosystem: {
+        ...prev.ecosystem,
+        known: prev.ecosystem.known.map((item) => item.id === id ? updated : item)
+      },
+      journal: [createEvent("Miko le dio un pequeño regalo a " + visitor.name + ".", "moment"), ...prev.journal].slice(0, 8)
+    }));
+    setMessage(visitor.name + " aceptó el regalo ♡");
+    burst("heart", 5);
+  }
+
+  function createFamily(id: string) {
+    const current = creatureRef.current;
+    const parent = current.ecosystem.known.find((item) => item.id === id);
+    if (!parent || !current.personality) return;
+    if (!canHaveOffspring(parent, current.level, current.bond, current.ecosystem.offspringCount)) return;
+
+    const child = createOffspring(
+      current.name,
+      current.personality,
+      current.evolution.form,
+      parent,
+      current.ecosystem.known
+    );
+
+    setCreature((prev) => ({
+      ...prev,
+      happiness: 100,
+      bond: clamp(prev.bond + 6),
+      ecosystem: {
+        ...prev.ecosystem,
+        known: [child, ...prev.ecosystem.known],
+        activeVisitorId: child.id,
+        offspringCount: prev.ecosystem.offspringCount + 1
+      },
+      journal: [
+        createEvent("Nació " + child.name + ", descendiente de Miko y " + parent.name + ".", "moment"),
+        ...prev.journal
+      ].slice(0, 8)
+    }));
+    setMessage("🥚 " + child.name + " nació ✦");
+    burst("heart", 10);
+    burst("star", 8);
+    gainXp(30);
+
+    if (visitorTimer.current) window.clearTimeout(visitorTimer.current);
+    visitorTimer.current = window.setTimeout(() => {
+      setCreature((prev) => ({
+        ...prev,
+        ecosystem: { ...prev.ecosystem, activeVisitorId: null }
+      }));
+    }, 32000);
+  }
+
+  async function travelToAnotherMonitor(manual = true) {
+    try {
+      const monitors = await availableMonitors();
+      if (monitors.length < 2) {
+        if (manual) setMessage("solo veo una pantalla 👀");
+        return;
+      }
+
+      const appWindow = getCurrentWindow();
+      const current = await currentMonitor();
+      const size = await appWindow.outerSize();
+      const alternatives = monitors.filter((monitor) => {
+        if (!current) return true;
+        return monitor.position.x !== current.position.x || monitor.position.y !== current.position.y;
+      });
+      if (!alternatives.length) return;
+
+      const target = alternatives[Math.floor(Math.random() * alternatives.length)];
+      const area = target.workArea;
+      const maxX = Math.max(20, area.size.width - size.width - 20);
+      const maxY = Math.max(20, area.size.height - size.height - 20);
+      const x = area.position.x + 20 + Math.random() * Math.max(1, maxX - 20);
+      const y = area.position.y + 20 + Math.random() * Math.max(1, maxY - 20);
+
+      await appWindow.setPosition(new PhysicalPosition(x, y));
+      setCreature((prev) => ({
+        ...prev,
+        ecosystem: {
+          ...prev.ecosystem,
+          monitorTrips: prev.ecosystem.monitorTrips + 1
+        },
+        journal: [createEvent("Miko exploró otra pantalla.", "moment"), ...prev.journal].slice(0, 8)
+      }));
+      setMessage("¡otra pantalla! ✦");
+      setTemporaryReaction("bounce", 1300);
+      burst("star", 6);
+    } catch {
+      if (manual) setMessage("no pude viajar ahora");
+    }
+  }
+
+  function setAutoTravel(value: boolean) {
+    setCreature((prev) => ({
+      ...prev,
+      ecosystem: { ...prev.ecosystem, autoTravel: value }
+    }));
   }
 
   function talk() {
@@ -677,6 +892,7 @@ export default function App() {
   const stageStyle = { "--direction": direction } as CSSProperties;
   const phase = dayPhaseMeta(dayPhase);
   const evolvedForm = evolutionForm(creature.evolution.form);
+  const activeVisitor = creature.ecosystem.known.find((item) => item.id === creature.ecosystem.activeVisitorId) ?? null;
   const resonance = evolutionReadiness({
     level: creature.level,
     bond: creature.bond,
@@ -708,6 +924,28 @@ export default function App() {
       <div className={"speech " + (message === "…" ? "quiet" : "")}>
         <span>{message}</span>
       </div>
+
+      {activeVisitor && (
+        <button
+          className={"visitor-creature visitor-" + relationTone(activeVisitor)}
+          style={{
+            "--visitor-hue": activeVisitor.genes.hue + "deg",
+            "--visitor-scale": String(.78 + activeVisitor.genes.size / 260),
+            "--visitor-glow": String(.2 + activeVisitor.genes.glow / 140)
+          } as CSSProperties}
+          onClick={socializeWithVisitor}
+          title={"Interactuar con " + activeVisitor.name}
+        >
+          <span className="visitor-ear visitor-ear-left" />
+          <span className="visitor-ear visitor-ear-right" />
+          <span className="visitor-body">
+            <i className="visitor-eye visitor-eye-left" />
+            <i className="visitor-eye visitor-eye-right" />
+            <i className="visitor-mouth" />
+          </span>
+          <small>{activeVisitor.parents ? "familia" : activeVisitor.name}</small>
+        </button>
+      )}
 
       <div className="particle-layer" aria-hidden="true">
         {particles.map((particle) => (
@@ -850,6 +1088,7 @@ export default function App() {
           <button onClick={sleep}><span>☾</span>Dormir</button>
           <button onClick={talk} disabled={brainThinking}><span>💬</span>{brainThinking ? "Pensando…" : "Hablar"}</button>
           <button onClick={openBrainPanel}><span>🧠</span>Cerebro</button>
+          <button onClick={openEcosystemPanel}><span>◌</span>Ecosistema</button>
         </div>
 
         <button className="treasure-button" onClick={() => setPanelView("treasures")}>
@@ -880,7 +1119,7 @@ export default function App() {
             onSave={() => void saveBrainSettings()}
             onRefresh={() => void refreshBrain()}
           />
-        ) : (
+        ) : panelView === "chat" ? (
           <ChatView
             mode={brainConfig.mode}
             draft={brainChatDraft}
@@ -889,11 +1128,131 @@ export default function App() {
             onDraft={setBrainChatDraft}
             onSend={sendChat}
           />
+        ) : (
+          <EcosystemView
+            ecosystem={creature.ecosystem}
+            mikoLevel={creature.level}
+            mikoBond={creature.bond}
+            onSocialize={socializeWithVisitor}
+            onGift={giftVisitor}
+            onFamily={createFamily}
+            onTravel={() => void travelToAnotherMonitor(true)}
+            onAutoTravel={setAutoTravel}
+          />
         )}
       </section>}
 
       {!menuOpen && hatchPhase === "hatched" && <div className="hint">clic · cariño &nbsp;&nbsp; clic derecho · menú</div>}
     </main>
+  );
+}
+
+function EcosystemView({
+  ecosystem,
+  mikoLevel,
+  mikoBond,
+  onSocialize,
+  onGift,
+  onFamily,
+  onTravel,
+  onAutoTravel
+}: {
+  ecosystem: EcosystemState;
+  mikoLevel: number;
+  mikoBond: number;
+  onSocialize: () => void;
+  onGift: (id: string) => void;
+  onFamily: (id: string) => void;
+  onTravel: () => void;
+  onAutoTravel: (value: boolean) => void;
+}) {
+  const active = ecosystem.known.find((item) => item.id === ecosystem.activeVisitorId) ?? null;
+  const ordered = [...ecosystem.known].sort((a, b) => {
+    if (Boolean(a.parents) !== Boolean(b.parents)) return a.parents ? -1 : 1;
+    return b.relation.affinity - a.relation.affinity;
+  });
+
+  return (
+    <div className="ecosystem-view">
+      <div className="ecosystem-heading">
+        <div>
+          <b>Ecosistema</b>
+          <span>{ecosystem.known.length} criaturas conocidas · {ecosystem.offspringCount} descendientes</span>
+        </div>
+        <span>◌</span>
+      </div>
+
+      {active && (
+        <div className={"active-social-card tone-" + relationTone(active)}>
+          <span
+            className="social-avatar"
+            style={{ filter: "hue-rotate(" + active.genes.hue + "deg)" }}
+          >
+            {active.parents ? "🥚" : active.personality.icon}
+          </span>
+          <div>
+            <b>{active.name}</b>
+            <small>{active.personality.name} · {relationLabel(active)}</small>
+            <div className="social-meter">
+              <i style={{ width: active.relation.affinity + "%" }} />
+            </div>
+          </div>
+          <button onClick={onSocialize}>saludar</button>
+        </div>
+      )}
+
+      <div className="ecosystem-travel">
+        <div>
+          <b>Explorar pantallas</b>
+          <span>{ecosystem.monitorTrips} viajes</span>
+        </div>
+        <button onClick={onTravel}>Viajar</button>
+        <label>
+          <input
+            type="checkbox"
+            checked={ecosystem.autoTravel}
+            onChange={(event) => onAutoTravel(event.target.checked)}
+          />
+          auto
+        </label>
+      </div>
+
+      <div className="social-list">
+        {ordered.length ? ordered.map((item) => {
+          const canFamily = canHaveOffspring(item, mikoLevel, mikoBond, ecosystem.offspringCount);
+          return (
+            <div className={"social-row tone-" + relationTone(item)} key={item.id}>
+              <span
+                className="social-avatar"
+                style={{ filter: "hue-rotate(" + item.genes.hue + "deg)" }}
+              >
+                {item.parents ? "✧" : item.personality.icon}
+              </span>
+              <div className="social-copy">
+                <div>
+                  <b>{item.name}</b>
+                  <small>gen {item.generation}</small>
+                </div>
+                <span>{relationLabel(item)} · ♥ {item.relation.affinity} · ⚡ {item.relation.rivalry}</span>
+                {item.parents && <em>{item.parents[0]} × {item.parents[1]}</em>}
+              </div>
+              <div className="social-actions">
+                <button onClick={() => onGift(item.id)}>♡</button>
+                {canFamily && <button className="egg-action" onClick={() => onFamily(item.id)}>🥚</button>}
+              </div>
+            </div>
+          );
+        }) : (
+          <div className="ecosystem-empty">
+            Miko todavía no conoce otras criaturas. Las visitas empiezan a partir del nivel 2.
+          </div>
+        )}
+      </div>
+
+      <small className="ecosystem-note">
+        La afinidad y rivalidad cambian con encuentros, personalidades y regalos. La descendencia hereda rasgos con pequeñas mutaciones.
+      </small>
+    </div>
   );
 }
 
