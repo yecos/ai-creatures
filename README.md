@@ -24,7 +24,6 @@ A tiny evolving creature that actually lives on your desktop.
 - Stable Hermes session key for future long-term memory
 - AI reactions use Miko's personality, stats, time, treasures and recent journal
 - Direct mini-chat with Miko from the desktop panel
-- Hermes model discovery through `/v1/models` so named profiles work cleanly
 - Hidden evolution progression driven by level, bond, care history, personality and treasures
 - Five normal evolution species plus one secret portal evolution
 - Every evolved form has a visual identity and a gameplay passive
@@ -36,6 +35,8 @@ A tiny evolving creature that actually lives on your desktop.
 - Up to three descendants with inherited traits and small genetic mutations
 - Family lineage records parent names and generation
 - Manual and optional automatic travel between monitors
+- Context menu opens beside Miko instead of covering the creature and its interaction animations
+- Hermes mode never selects a concrete model: Hermes keeps control of whichever gateway/default model is active
 - Interaction effects: hearts, crumbs, stars and sleep particles
 - Hunger, energy, happiness, bond, XP and levels
 - Feed, play, pet and sleep interactions
@@ -153,7 +154,7 @@ Start Hermes:
 hermes gateway
 ```
 
-Then open **Miko → Cerebro**, choose **Hermes** or **Auto**, keep the default endpoint:
+Then open **Miko → Cerebro**, choose **Hermes** or **Auto**, keep the default endpoint. AI Creatures does not expose a Hermes model picker; it sends the virtual `hermes-agent` model so the Hermes gateway resolves its own active/default model:
 
 ```text
 http://127.0.0.1:8642/v1
