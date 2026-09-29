@@ -2,7 +2,7 @@
 
 A tiny evolving creature that actually lives on your desktop.
 
-**v0.6 evolution** lets Miko permanently change form according to the life it has actually lived.
+**v0.7 ecosystem** gives Miko a social world: visitors, friendships, rivals, family and multi-monitor exploration.
 
 ## What already works
 
@@ -29,6 +29,13 @@ A tiny evolving creature that actually lives on your desktop.
 - Five normal evolution species plus one secret portal evolution
 - Every evolved form has a visual identity and a gameplay passive
 - Evolution is permanent and recorded in Miko's life journal
+- Other creatures can visit Miko on the desktop
+- Persistent friendship, best-friend and rivalry relationships
+- Social interactions depend on personality compatibility
+- Gift interactions can repair or strengthen relationships
+- Up to three descendants with inherited traits and small genetic mutations
+- Family lineage records parent names and generation
+- Manual and optional automatic travel between monitors
 - Interaction effects: hearts, crumbs, stars and sleep particles
 - Hunger, energy, happiness, bond, XP and levels
 - Feed, play, pet and sleep interactions
@@ -103,14 +110,26 @@ The exact scoring weights are intentionally not shown in the UI. A **Resonance**
 
 Each form changes both appearance and behavior: bonding, play rewards, food effects, sleep recovery, happiness decay, movement or treasure discovery.
 
+## Ecosystem
+
+Starting at level 2, other creatures can visit Miko. Visitors are persistent: once met, they stay in the ecosystem list and future meetings continue the same relationship.
+
+Relationships can become:
+
+- **friend**
+- **best friend**
+- **rival**
+- **family**
+
+Social outcomes are influenced by personality compatibility and accumulated meetings. Gifts improve affinity and soften rivalry.
+
+When a relationship is strong enough, Miko is level 5+, and the bond is high, a small **egg** action can appear. The descendant inherits blended trait values from both parents with small mutations. Its generation and parent names are saved permanently.
+
+If the computer has multiple monitors, Miko can travel between them manually. Optional auto-travel lets Miko occasionally explore another screen while energetic.
+
 ## Roadmap
 
-### v0.7 — Ecosystem
-- Multiple creatures
-- Relationships
-- Rivalry / friendship
-- Breeding and inherited traits
-- Cross-monitor travel
+### v0.8 — World
 
 ## Design principle
 
