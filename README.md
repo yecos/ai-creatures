@@ -2,7 +2,7 @@
 
 A tiny evolving creature that actually lives on your desktop.
 
-**v0.5 brain providers** lets Miko use a local brain, Ollama, Hermes Agent, or automatic fallback.
+**v0.6 evolution** lets Miko permanently change form according to the life it has actually lived.
 
 ## What already works
 
@@ -25,6 +25,10 @@ A tiny evolving creature that actually lives on your desktop.
 - AI reactions use Miko's personality, stats, time, treasures and recent journal
 - Direct mini-chat with Miko from the desktop panel
 - Hermes model discovery through `/v1/models` so named profiles work cleanly
+- Hidden evolution progression driven by level, bond, care history, personality and treasures
+- Five normal evolution species plus one secret portal evolution
+- Every evolved form has a visual identity and a gameplay passive
+- Evolution is permanent and recorded in Miko's life journal
 - Interaction effects: hearts, crumbs, stars and sleep particles
 - Hunger, energy, happiness, bond, XP and levels
 - Feed, play, pet and sleep interactions
@@ -82,13 +86,24 @@ Miko is currently a soft alien/slime creature with:
 - squash-and-stretch reactions
 - contextual particles for petting, eating, playing and sleeping
 
-## Roadmap
+## Evolution
 
-### v0.6 — Evolution
-- Hidden evolution conditions
-- Visual mutations
-- Species branches
-- Genetics
+Miko does not evolve from a menu. The game scores how it has been raised and chooses the form that best matches its life.
+
+Known forms:
+
+- **Lumiko** — affectionate light form
+- **Voltik** — energetic play form
+- **Mossling** — calm nature/collector form
+- **Noctiko** — lunar sleep form
+- **Berryn** — food-loving form
+- **Riftling** — secret anomaly linked to the portal shard
+
+The exact scoring weights are intentionally not shown in the UI. A **Resonance** meter hints at evolution readiness without revealing the winning route.
+
+Each form changes both appearance and behavior: bonding, play rewards, food effects, sleep recovery, happiness decay, movement or treasure discovery.
+
+## Roadmap
 
 ### v0.7 — Ecosystem
 - Multiple creatures
