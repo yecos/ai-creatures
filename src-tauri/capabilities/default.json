@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "core:window:allow-set-position",
-    "core:window:allow-available-monitors"
+    "core:window:allow-available-monitors",
+    "core:window:allow-set-size"
   ]
 }
