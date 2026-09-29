@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { availableMonitors, currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import {
   chooseIdleReaction,
   createPersonality,
@@ -57,6 +57,8 @@ import {
 } from "./ecosystem";
 
 const STORAGE_KEY = "ai-creatures:v0.7";
+const COLLAPSED_WINDOW = { width: 260, height: 300 };
+const EXPANDED_WINDOW = { width: 560, height: 300 };
 const LEGACY_STORAGE_KEYS = ["ai-creatures:v0.6", "ai-creatures:v0.4", "ai-creatures:v0.3", "ai-creatures:v0.2"];
 
 type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce" | "shy" | "wiggle" | "evolve";
@@ -178,6 +180,7 @@ function moodLabel(mood: Mood) {
 export default function App() {
   const [creature, setCreature] = useState<CreatureState>(() => readState());
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuSide, setMenuSide] = useState<"left" | "right">("right");
   const [panelView, setPanelView] = useState<"main" | "treasures" | "brain" | "chat" | "ecosystem">("main");
   const [dayPhase, setDayPhase] = useState<DayPhase>(() => getDayPhase());
   const [brainConfig, setBrainConfig] = useState<PublicBrainConfig>(defaultBrainConfig);
@@ -198,6 +201,7 @@ export default function App() {
   const hatchTimer = useRef<number | null>(null);
   const evolutionTimer = useRef<number | null>(null);
   const visitorTimer = useRef<number | null>(null);
+  const menuAnchorRef = useRef<{ side: "left" | "right"; x: number; y: number } | null>(null);
   const evolutionPendingRef = useRef(false);
   const creatureRef = useRef(creature);
   const brainThinkingRef = useRef(false);
@@ -781,6 +785,69 @@ export default function App() {
     }));
   }
 
+  async function setMenuVisibility(nextOpen: boolean) {
+    if (nextOpen === menuOpen) return;
+
+    const appWindow = getCurrentWindow();
+    const delta = EXPANDED_WINDOW.width - COLLAPSED_WINDOW.width;
+
+    if (!nextOpen) {
+      setMenuOpen(false);
+      setPanelView("main");
+
+      try {
+        const currentPos = await appWindow.outerPosition();
+        await appWindow.setSize(new PhysicalSize(COLLAPSED_WINDOW.width, COLLAPSED_WINDOW.height));
+
+        if (menuAnchorRef.current?.side === "left") {
+          await appWindow.setPosition(
+            new PhysicalPosition(currentPos.x + delta, currentPos.y)
+          );
+        }
+      } catch {
+        // Browser preview or transient desktop resize failure.
+      }
+
+      menuAnchorRef.current = null;
+      return;
+    }
+
+    try {
+      const position = await appWindow.outerPosition();
+      const monitor = await currentMonitor();
+      let side: "left" | "right" = "right";
+
+      if (monitor) {
+        const area = monitor.workArea;
+        const rightEdge = area.position.x + area.size.width;
+        const rightSpace = rightEdge - (position.x + COLLAPSED_WINDOW.width);
+        const leftSpace = position.x - area.position.x;
+
+        if (rightSpace < delta && leftSpace > rightSpace) {
+          side = "left";
+        }
+      }
+
+      menuAnchorRef.current = { side, x: position.x, y: position.y };
+      setMenuSide(side);
+
+      if (side === "left") {
+        await appWindow.setPosition(
+          new PhysicalPosition(position.x - delta, position.y)
+        );
+      }
+
+      await appWindow.setSize(
+        new PhysicalSize(EXPANDED_WINDOW.width, EXPANDED_WINDOW.height)
+      );
+    } catch {
+      setMenuSide("right");
+    }
+
+    setPanelView("main");
+    setMenuOpen(true);
+  }
+
   function talk() {
     const localLine = personalityLine(creature.personality, creature.mood);
     setTemporaryReaction("peek", 1200);
@@ -909,7 +976,7 @@ export default function App() {
     <main
       ref={stageRef}
       style={stageStyle}
-      className={"stage mood-" + creature.mood + " reaction-" + reaction + " personality-" + (creature.personality?.id ?? "unborn") + " phase-" + dayPhase + " evolution-" + (creature.evolution.form ?? "baby")}
+      className={"stage mood-" + creature.mood + " reaction-" + reaction + " personality-" + (creature.personality?.id ?? "unborn") + " phase-" + dayPhase + " evolution-" + (creature.evolution.form ?? "baby") + (menuOpen ? " menu-open menu-" + menuSide : "")}
       onPointerMove={trackPointer}
       onPointerLeave={() => {
         stageRef.current?.style.setProperty("--look-x", "0px");
@@ -917,8 +984,7 @@ export default function App() {
       }}
       onContextMenu={(event: ReactMouseEvent<HTMLElement>) => {
         event.preventDefault();
-        setPanelView("main");
-        setMenuOpen((value) => !value);
+        void setMenuVisibility(!menuOpen);
       }}
     >
       <div className={"speech " + (message === "…" ? "quiet" : "")}>
@@ -970,7 +1036,7 @@ export default function App() {
           onClick={pet}
           onDoubleClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
             event.stopPropagation();
-            setMenuOpen((value) => !value);
+            void setMenuVisibility(!menuOpen);
           }}
         >
           <div className="creature-wrap">
@@ -1029,7 +1095,7 @@ export default function App() {
             className="close"
             onClick={() => {
               if (panelView !== "main") setPanelView("main");
-              else setMenuOpen(false);
+              else void setMenuVisibility(false);
             }}
             aria-label={panelView !== "main" ? "Volver" : "Cerrar menú"}
           >
