@@ -791,3 +791,257 @@ button { font: inherit; }
 .phase-evening .antenna i { box-shadow: 0 0 17px rgba(255,159,196,.52); }
 .phase-night .antenna i { box-shadow: 0 0 18px rgba(143,128,255,.62); }
 .phase-night .body { box-shadow: inset 0 1px 1px rgba(255,255,255,.66), inset -15px -18px 24px rgba(49,38,132,.25), 0 20px 35px rgba(24,21,70,.28), 0 0 34px rgba(112,100,255,.2); }
+
+
+/* ---------------- brain providers v0.5 ---------------- */
+.panel {
+  max-height: calc(100% - 12px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.panel::-webkit-scrollbar { display: none; }
+.actions button:disabled,
+.brain-view button:disabled {
+  opacity: .5;
+  cursor: default;
+  transform: none;
+}
+.brain-view {
+  margin-top: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.brain-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brain-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.brain-heading b { font-size: 10px; }
+.brain-heading span { color: #9694a7; font-size: 7px; }
+.brain-heading > button {
+  width: 28px;
+  height: 26px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 9px;
+  color: #d9d8e5;
+  background: rgba(255,255,255,.05);
+  cursor: pointer;
+}
+.brain-modes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.brain-modes button {
+  padding: 6px 2px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  color: #aaa9bb;
+  background: rgba(255,255,255,.04);
+  font-size: 7px;
+  font-weight: 760;
+  cursor: pointer;
+}
+.brain-modes button.active {
+  color: white;
+  border-color: rgba(112,222,215,.28);
+  background: linear-gradient(145deg, rgba(126,99,255,.25), rgba(89,222,211,.14));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.provider-statuses {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.provider-badge {
+  display: grid;
+  grid-template-columns: 7px 1fr;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
+}
+.provider-badge > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6b6877;
+  box-shadow: 0 0 0 3px rgba(107,104,119,.08);
+}
+.provider-badge.online > i {
+  background: #68e4ba;
+  box-shadow: 0 0 8px rgba(104,228,186,.48);
+}
+.provider-badge.offline > i { background: #8a6672; }
+.provider-badge > div { min-width: 0; display: flex; flex-direction: column; }
+.provider-badge b { font-size: 7px; }
+.provider-badge span {
+  overflow: hidden;
+  color: #858394;
+  font-size: 6px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.brain-fields {
+  display: grid;
+  gap: 5px;
+}
+.brain-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.brain-fields label > span {
+  color: #9795a8;
+  font-size: 6px;
+  font-weight: 720;
+}
+.brain-fields input {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: 7px 8px;
+  outline: none;
+  color: #efedf8;
+  background: rgba(4,5,12,.26);
+  font-size: 7px;
+}
+.brain-fields input:focus {
+  border-color: rgba(112,222,215,.28);
+  box-shadow: 0 0 0 2px rgba(99,216,211,.06);
+}
+.brain-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #aaa8b9;
+  font-size: 7px;
+}
+.brain-toggle input { accent-color: #6fded1; }
+.brain-safe {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 7px;
+  border: 1px solid rgba(108,224,210,.09);
+  border-radius: 9px;
+  background: rgba(88,201,196,.045);
+}
+.brain-safe span { font-size: 11px; }
+.brain-safe p {
+  margin: 0;
+  color: #9392a2;
+  font-size: 6px;
+  line-height: 1.35;
+}
+.brain-error {
+  padding: 6px 7px;
+  border: 1px solid rgba(255,116,147,.14);
+  border-radius: 8px;
+  color: #dca5b1;
+  background: rgba(255,90,124,.05);
+  font-size: 6px;
+  line-height: 1.35;
+}
+.brain-save {
+  width: 100%;
+  border: 1px solid rgba(125,225,212,.18);
+  border-radius: 10px;
+  padding: 8px;
+  color: white;
+  background: linear-gradient(135deg, rgba(125,96,255,.32), rgba(79,205,194,.24));
+  font-size: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.brain-toggle-danger { color: #c6a2aa; }
+.brain-toggle-danger input { accent-color: #d87991; }
+.brain-safe.blocked {
+  border-color: rgba(255,116,147,.18);
+  background: rgba(255,90,124,.055);
+}
+.brain-safe.blocked p { color: #c8a1aa; }
+
+
+/* ---------------- direct chat v0.5 ---------------- */
+.chat-view {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.chat-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.chat-heading b { font-size: 10px; }
+.chat-heading span { color: #9694a7; font-size: 7px; }
+.chat-orb {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: linear-gradient(145deg, rgba(126,99,255,.24), rgba(87,219,208,.12));
+  font-size: 14px !important;
+}
+.chat-view > p {
+  margin: 0;
+  color: #aaa8ba;
+  font-size: 7px;
+  line-height: 1.45;
+}
+.chat-compose {
+  display: grid;
+  grid-template-columns: 1fr 30px;
+  gap: 5px;
+}
+.chat-compose input {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 9px;
+  padding: 8px 9px;
+  outline: none;
+  color: #f3f1fa;
+  background: rgba(5,6,14,.28);
+  font-size: 7px;
+}
+.chat-compose input:focus {
+  border-color: rgba(111,225,211,.26);
+  box-shadow: 0 0 0 2px rgba(100,220,210,.05);
+}
+.chat-compose button {
+  border: 1px solid rgba(113,225,211,.18);
+  border-radius: 9px;
+  color: white;
+  background: linear-gradient(145deg, rgba(126,99,255,.34), rgba(76,211,199,.26));
+  cursor: pointer;
+  font-weight: 900;
+}
+.chat-compose button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.chat-view > small {
+  color: #7f7d8f;
+  font-size: 6px;
+  line-height: 1.4;
+}

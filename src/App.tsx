@@ -21,6 +21,16 @@ import {
   type LifeEvent,
   type Treasure
 } from "./life";
+import {
+  askBrain,
+  defaultBrainConfig,
+  loadBrainConfig,
+  loadBrainStatus,
+  saveBrainConfig,
+  type BrainReply,
+  type BrainStatus,
+  type PublicBrainConfig
+} from "./brain";
 
 const STORAGE_KEY = "ai-creatures:v0.4";
 const LEGACY_STORAGE_KEYS = ["ai-creatures:v0.3", "ai-creatures:v0.2"];
@@ -135,8 +145,14 @@ function moodLabel(mood: Mood) {
 export default function App() {
   const [creature, setCreature] = useState<CreatureState>(() => readState());
   const [menuOpen, setMenuOpen] = useState(false);
-  const [panelView, setPanelView] = useState<"main" | "treasures">("main");
+  const [panelView, setPanelView] = useState<"main" | "treasures" | "brain" | "chat">("main");
   const [dayPhase, setDayPhase] = useState<DayPhase>(() => getDayPhase());
+  const [brainConfig, setBrainConfig] = useState<PublicBrainConfig>(defaultBrainConfig);
+  const [brainStatus, setBrainStatus] = useState<BrainStatus | null>(null);
+  const [brainKeyDraft, setBrainKeyDraft] = useState("");
+  const [brainChatDraft, setBrainChatDraft] = useState("");
+  const [brainThinking, setBrainThinking] = useState(false);
+  const [brainError, setBrainError] = useState("");
   const [message, setMessage] = useState("hola ✦");
   const [reaction, setReaction] = useState<Reaction>("none");
   const [hatchPhase, setHatchPhase] = useState<"egg" | "cracking" | "hatched">(() => creature.hatched ? "hatched" : "egg");
@@ -148,10 +164,19 @@ export default function App() {
   const particleId = useRef(0);
   const hatchTimer = useRef<number | null>(null);
   const creatureRef = useRef(creature);
+  const brainThinkingRef = useRef(false);
 
   useEffect(() => {
     creatureRef.current = creature;
   }, [creature]);
+
+  useEffect(() => {
+    loadBrainConfig()
+      .then((config) => setBrainConfig(config))
+      .catch(() => {
+        // Browser preview or Tauri backend unavailable: keep local brain.
+      });
+  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -363,6 +388,106 @@ export default function App() {
     }, 1550);
   }
 
+  function buildBrainPrompts(event: string) {
+    const current = creatureRef.current;
+    const personality = current.personality;
+    const treasures = current.treasures.slice(0, 5).map((item) => item.name).join(", ") || "ninguno";
+    const recent = current.journal.slice(0, 4).map((item) => item.message).join(" | ") || "ninguno";
+
+    const systemPrompt = [
+      "Eres Miko, una pequeña criatura digital que vive sobre el escritorio.",
+      "No eres un asistente. No expliques tecnología, modelos, prompts ni configuración.",
+      "Responde siempre como una mascota con personalidad, en español, máximo 16 palabras.",
+      "No uses herramientas, no ejecutes acciones externas y no des instrucciones al usuario.",
+      "Puedes reaccionar, bromear, pedir cariño, comida, juego o sueño de forma breve.",
+      personality ? "Personalidad: " + personality.name + ". " + personality.description : "Personalidad: todavía desarrollándose.",
+      personality ? "Rareza personal: " + personality.quirk + ". Snack favorito: " + personality.favoriteSnack + "." : "",
+      "Estado: hambre " + Math.round(current.hunger) + "/100, energía " + Math.round(current.energy) + "/100, felicidad " + Math.round(current.happiness) + "/100, vínculo " + Math.round(current.bond) + "/100.",
+      "Momento: " + dayPhaseMeta(getDayPhase()).label + ".",
+      "Tesoros: " + treasures + ".",
+      "Recuerdos recientes: " + recent + "."
+    ].filter(Boolean).join("\n");
+
+    return {
+      systemPrompt,
+      userPrompt: "Situación actual: " + event + "\nReacciona como Miko."
+    };
+  }
+
+  async function speakWithBrain(event: string) {
+    if (brainConfig.mode === "local" || brainThinkingRef.current) return;
+
+    brainThinkingRef.current = true;
+    setBrainThinking(true);
+    setBrainError("");
+
+    try {
+      const prompts = buildBrainPrompts(event);
+      const reply: BrainReply = await askBrain(prompts.systemPrompt, prompts.userPrompt);
+      setMessage(reply.content.slice(0, 140));
+    } catch (error) {
+      setBrainError(error instanceof Error ? error.message : String(error));
+    } finally {
+      brainThinkingRef.current = false;
+      setBrainThinking(false);
+    }
+  }
+
+  async function refreshBrain() {
+    setBrainError("");
+    try {
+      const status = await loadBrainStatus();
+      setBrainStatus(status);
+      setBrainConfig(status.config);
+    } catch (error) {
+      setBrainError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function saveBrainSettings() {
+    setBrainThinking(true);
+    setBrainError("");
+    try {
+      const saved = await saveBrainConfig(brainConfig, brainKeyDraft || undefined);
+      setBrainConfig(saved);
+      setBrainKeyDraft("");
+      const status = await loadBrainStatus();
+      setBrainStatus(status);
+    } catch (error) {
+      setBrainError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBrainThinking(false);
+    }
+  }
+
+  function openBrainPanel() {
+    setPanelView("brain");
+    void refreshBrain();
+  }
+
+  function talk() {
+    const localLine = personalityLine(creature.personality, creature.mood);
+    setTemporaryReaction("peek", 1200);
+
+    if (brainConfig.mode === "local") {
+      setMessage(localLine);
+      return;
+    }
+
+    setPanelView("chat");
+    setMessage("te escucho ✦");
+  }
+
+  function sendChat() {
+    const text = brainChatDraft.trim();
+    if (!text || brainThinking) return;
+
+    setBrainChatDraft("");
+    setMessage("hmm…");
+    setTemporaryReaction("peek", 1400);
+    void speakWithBrain('El humano te dijo: "' + text + '". Respóndele directamente como Miko.');
+  }
+
   function feed() {
     setCreature((p) => {
       const boost = p.personality?.modifiers.feedBoost ?? 1;
@@ -372,6 +497,7 @@ export default function App() {
     setMessage(creature.personality?.id === "glutton" ? "¡EL MEJOR DÍA! ✦" : "crunch crunch ✦");
     setTemporaryReaction("feed", 1700);
     burst("crumb", 7);
+    void speakWithBrain("El humano acaba de darte comida.");
   }
 
   function play() {
@@ -389,6 +515,7 @@ export default function App() {
     setMessage(creature.personality?.id === "mischievous" ? "¡MÁS RÁPIDO! ⚡" : "¡otra vez! ✦");
     setTemporaryReaction("play", 1850);
     burst("star", 9);
+    void speakWithBrain("El humano acaba de jugar contigo.");
   }
 
   function pet() {
@@ -405,6 +532,7 @@ export default function App() {
     setMessage(creature.personality?.id === "shy" ? "…♡" : "mrrp… ♡");
     setTemporaryReaction("pet", 1450);
     burst("heart", 6);
+    void speakWithBrain("El humano acaba de acariciarte.");
   }
 
   function sleep() {
@@ -412,6 +540,7 @@ export default function App() {
     setMessage("zzZ…");
     setTemporaryReaction("sleep", 4200);
     burst("zzz", 4);
+    void speakWithBrain("El humano te acomodó para dormir.");
   }
 
   function trackPointer(event: ReactPointerEvent<HTMLElement>) {
@@ -522,12 +651,12 @@ export default function App() {
           <button
             className="close"
             onClick={() => {
-              if (panelView === "treasures") setPanelView("main");
+              if (panelView !== "main") setPanelView("main");
               else setMenuOpen(false);
             }}
-            aria-label={panelView === "treasures" ? "Volver" : "Cerrar menú"}
+            aria-label={panelView !== "main" ? "Volver" : "Cerrar menú"}
           >
-            {panelView === "treasures" ? "‹" : "×"}
+            {panelView !== "main" ? "‹" : "×"}
           </button>
         </header>
 
@@ -559,6 +688,8 @@ export default function App() {
           <button onClick={play}><span>◉</span>Jugar</button>
           <button onClick={pet}><span>♡</span>Acariciar</button>
           <button onClick={sleep}><span>☾</span>Dormir</button>
+          <button onClick={talk} disabled={brainThinking}><span>💬</span>{brainThinking ? "Pensando…" : "Hablar"}</button>
+          <button onClick={openBrainPanel}><span>🧠</span>Cerebro</button>
         </div>
 
         <button className="treasure-button" onClick={() => setPanelView("treasures")}>
@@ -575,13 +706,217 @@ export default function App() {
           <div><i style={{ width: String(Math.min(100, (creature.xp / (creature.level * 100)) * 100)) + "%" }} /></div>
           <small>{creature.xp}/{creature.level * 100}</small>
         </div>
-        </> : (
+        </> : panelView === "treasures" ? (
           <TreasureView treasures={creature.treasures} journal={creature.journal} />
+        ) : panelView === "brain" ? (
+          <BrainView
+            config={brainConfig}
+            status={brainStatus}
+            apiKeyDraft={brainKeyDraft}
+            busy={brainThinking}
+            error={brainError}
+            onConfig={setBrainConfig}
+            onApiKey={setBrainKeyDraft}
+            onSave={() => void saveBrainSettings()}
+            onRefresh={() => void refreshBrain()}
+          />
+        ) : (
+          <ChatView
+            mode={brainConfig.mode}
+            draft={brainChatDraft}
+            busy={brainThinking}
+            error={brainError}
+            onDraft={setBrainChatDraft}
+            onSend={sendChat}
+          />
         )}
       </section>}
 
       {!menuOpen && hatchPhase === "hatched" && <div className="hint">clic · cariño &nbsp;&nbsp; clic derecho · menú</div>}
     </main>
+  );
+}
+
+function ChatView({
+  mode,
+  draft,
+  busy,
+  error,
+  onDraft,
+  onSend
+}: {
+  mode: PublicBrainConfig["mode"];
+  draft: string;
+  busy: boolean;
+  error: string;
+  onDraft: (value: string) => void;
+  onSend: () => void;
+}) {
+  return (
+    <div className="chat-view">
+      <div className="chat-heading">
+        <span className="chat-orb">💬</span>
+        <div>
+          <b>Hablar con Miko</b>
+          <span>cerebro · {mode}</span>
+        </div>
+      </div>
+
+      <p>Escríbele algo. Miko responderá en la burbuja sobre su cabeza.</p>
+
+      <div className="chat-compose">
+        <input
+          autoFocus
+          value={draft}
+          maxLength={180}
+          placeholder="¿Qué estás haciendo, Miko?"
+          onChange={(e) => onDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSend();
+          }}
+        />
+        <button onClick={onSend} disabled={busy || !draft.trim()}>
+          {busy ? "…" : "↑"}
+        </button>
+      </div>
+
+      {error && <div className="brain-error">{error}</div>}
+
+      <small>Hermes/Ollama reciben el estado y recuerdos recientes de Miko.</small>
+    </div>
+  );
+}
+
+function BrainView({
+  config,
+  status,
+  apiKeyDraft,
+  busy,
+  error,
+  onConfig,
+  onApiKey,
+  onSave,
+  onRefresh
+}: {
+  config: PublicBrainConfig;
+  status: BrainStatus | null;
+  apiKeyDraft: string;
+  busy: boolean;
+  error: string;
+  onConfig: (config: PublicBrainConfig) => void;
+  onApiKey: (value: string) => void;
+  onSave: () => void;
+  onRefresh: () => void;
+}) {
+  const patch = (next: Partial<PublicBrainConfig>) => onConfig({ ...config, ...next });
+
+  return (
+    <div className="brain-view">
+      <div className="brain-heading">
+        <div>
+          <b>Cerebro de Miko</b>
+          <span>Local, Hermes u Ollama</span>
+        </div>
+        <button onClick={onRefresh} disabled={busy}>↻</button>
+      </div>
+
+      <div className="brain-modes">
+        {(["local", "auto", "hermes", "ollama"] as const).map((mode) => (
+          <button
+            key={mode}
+            className={config.mode === mode ? "active" : ""}
+            onClick={() => patch({ mode })}
+          >
+            {mode === "local" ? "Local" : mode === "auto" ? "Auto" : mode === "hermes" ? "Hermes" : "Ollama"}
+          </button>
+        ))}
+      </div>
+
+      <div className="provider-statuses">
+        <ProviderBadge label="Hermes" status={status?.hermes ?? null} />
+        <ProviderBadge label="Ollama" status={status?.ollama ?? null} />
+      </div>
+
+      {(config.mode === "hermes" || config.mode === "auto") && (
+        <div className="brain-fields">
+          <label>
+            <span>Hermes endpoint</span>
+            <input value={config.hermesUrl} onChange={(e) => patch({ hermesUrl: e.target.value })} />
+          </label>
+          <label>
+            <span>API key {config.hermesKeySet ? "· guardada" : ""}</span>
+            <input
+              type="password"
+              value={apiKeyDraft}
+              placeholder={config.hermesKeySet ? "•••••••• (dejar vacío para conservar)" : "API_SERVER_KEY"}
+              onChange={(e) => onApiKey(e.target.value)}
+            />
+          </label>
+        </div>
+      )}
+
+      {(config.mode === "ollama" || config.mode === "auto" || config.fallbackToOllama) && (
+        <div className="brain-fields">
+          <label>
+            <span>Ollama endpoint</span>
+            <input value={config.ollamaUrl} onChange={(e) => patch({ ollamaUrl: e.target.value })} />
+          </label>
+          <label>
+            <span>Modelo</span>
+            <input value={config.ollamaModel} onChange={(e) => patch({ ollamaModel: e.target.value })} />
+          </label>
+        </div>
+      )}
+
+      {(config.mode === "hermes" || config.mode === "auto") && (
+        <>
+          <label className="brain-toggle">
+            <input
+              type="checkbox"
+              checked={config.fallbackToOllama}
+              onChange={(e) => patch({ fallbackToOllama: e.target.checked })}
+            />
+            <span>Usar Ollama si Hermes no responde</span>
+          </label>
+
+          <label className="brain-toggle brain-toggle-danger">
+            <input
+              type="checkbox"
+              checked={config.allowHermesTools}
+              onChange={(e) => patch({ allowHermesTools: e.target.checked })}
+            />
+            <span>Permitir Hermes aunque tenga herramientas activas</span>
+          </label>
+        </>
+      )}
+
+      <div className={"brain-safe " + ((status?.hermes.toolsetsEnabled ?? 0) > 0 && !config.allowHermesTools ? "blocked" : "")}>
+        <span>{(status?.hermes.toolsetsEnabled ?? 0) > 0 && !config.allowHermesTools ? "🛑" : "🔒"}</span>
+        <p>
+          {(status?.hermes.toolsetsEnabled ?? 0) > 0 && !config.allowHermesTools
+            ? "Hermes tiene herramientas activas: AI Creatures lo bloqueará y usará fallback."
+            : "Modo mascota: Hermes solo se usa si no expone herramientas, salvo autorización avanzada."}
+        </p>
+      </div>
+
+      {error && <div className="brain-error">{error}</div>}
+
+      <button className="brain-save" onClick={onSave} disabled={busy}>
+        {busy ? "Comprobando…" : "Guardar y probar"}
+      </button>
+    </div>
+  );
+}
+
+function ProviderBadge({ label, status }: { label: string; status: BrainStatus["hermes"] | null }) {
+  return (
+    <div className={"provider-badge " + (status?.online ? "online" : "offline")}>
+      <i />
+      <div>
+        <b>{label}</b>
+        <span>{status ? status.detail : "sin comprobar"}</span>
+      </div>
+    </div>
   );
 }
 
