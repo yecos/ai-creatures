@@ -243,7 +243,7 @@ export default function App() {
     let timer: number | undefined;
 
     async function wander() {
-      if (stopped || !creature.hatched || menuOpen || reaction === "sleep" || creature.mood === "sleepy") return;
+      if (stopped || !creature.hatched || menuOpen || reaction === "sleep" || reaction === "evolve" || creature.mood === "sleepy") return;
       try {
         const appWindow = getCurrentWindow();
         const monitor = await currentMonitor();
