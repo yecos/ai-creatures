@@ -31,11 +31,22 @@ import {
   type BrainStatus,
   type PublicBrainConfig
 } from "./brain";
+import {
+  canEvolve,
+  chooseEvolution,
+  evolutionForm,
+  evolutionMessage,
+  evolutionModifiers,
+  evolutionReadiness,
+  initialEvolutionState,
+  type CareStats,
+  type EvolutionState
+} from "./evolution";
 
-const STORAGE_KEY = "ai-creatures:v0.4";
-const LEGACY_STORAGE_KEYS = ["ai-creatures:v0.3", "ai-creatures:v0.2"];
+const STORAGE_KEY = "ai-creatures:v0.6";
+const LEGACY_STORAGE_KEYS = ["ai-creatures:v0.4", "ai-creatures:v0.3", "ai-creatures:v0.2"];
 
-type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce" | "shy" | "wiggle";
+type Reaction = "none" | "pet" | "feed" | "play" | "sleep" | "peek" | "bounce" | "shy" | "wiggle" | "evolve";
 type ParticleKind = "heart" | "star" | "crumb" | "zzz";
 
 type CreatureState = {
@@ -54,6 +65,7 @@ type CreatureState = {
   treasures: Treasure[];
   journal: LifeEvent[];
   lastDiscoveryAt: number;
+  evolution: EvolutionState;
 };
 
 type Particle = {
@@ -79,7 +91,8 @@ const initialState: CreatureState = {
   personality: null,
   treasures: [],
   journal: [],
-  lastDiscoveryAt: 0
+  lastDiscoveryAt: 0,
+  evolution: initialEvolutionState
 };
 
 function clamp(value: number, min = 0, max = 100) {
@@ -97,6 +110,8 @@ function readState(): CreatureState {
     const awayMinutes = Math.max(0, (Date.now() - (parsed.lastSavedAt ?? Date.now())) / 60000);
     const personality = parsed.personality ?? (parsed.hatched ? createPersonality() : null);
     const modifiers = personality?.modifiers;
+    const evolution = parsed.evolution ?? initialEvolutionState;
+    const evolvedModifiers = evolutionModifiers(evolution.form);
     let journal = parsed.journal ?? [];
 
     if (parsed.hatched && awayMinutes >= 30) {
@@ -113,9 +128,10 @@ function readState(): CreatureState {
       treasures: parsed.treasures ?? [],
       journal,
       lastDiscoveryAt: parsed.lastDiscoveryAt ?? 0,
+      evolution,
       hunger: clamp((parsed.hunger ?? initialState.hunger) + awayMinutes * 0.7 * (modifiers?.hungerRate ?? 1)),
       energy: clamp((parsed.energy ?? initialState.energy) + awayMinutes * 0.45),
-      happiness: clamp((parsed.happiness ?? initialState.happiness) - awayMinutes * 0.12 * (modifiers?.happinessDecay ?? 1)),
+      happiness: clamp((parsed.happiness ?? initialState.happiness) - awayMinutes * 0.12 * (modifiers?.happinessDecay ?? 1) * evolvedModifiers.happinessDecay),
       lastSavedAt: Date.now()
     };
   } catch {
@@ -163,6 +179,8 @@ export default function App() {
   const reactionTimer = useRef<number | null>(null);
   const particleId = useRef(0);
   const hatchTimer = useRef<number | null>(null);
+  const evolutionTimer = useRef<number | null>(null);
+  const evolutionPendingRef = useRef(false);
   const creatureRef = useRef(creature);
   const brainThinkingRef = useRef(false);
 
@@ -182,12 +200,13 @@ export default function App() {
     const interval = window.setInterval(() => {
       setCreature((prev) => {
         const modifiers = prev.personality?.modifiers;
+        const evolved = evolutionModifiers(prev.evolution.form);
         const next = {
           ...prev,
           ageSeconds: prev.ageSeconds + 1,
           hunger: clamp(prev.hunger + 0.075 * (modifiers?.hungerRate ?? 1)),
           energy: clamp(prev.energy - 0.023 * (modifiers?.energyDrain ?? 1)),
-          happiness: clamp(prev.happiness - 0.01 * (modifiers?.happinessDecay ?? 1)),
+          happiness: clamp(prev.happiness - 0.01 * (modifiers?.happinessDecay ?? 1) * evolved.happinessDecay),
           lastSavedAt: Date.now()
         };
         next.mood = getMood(next);
@@ -270,6 +289,7 @@ export default function App() {
     return () => {
       if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
       if (hatchTimer.current) window.clearTimeout(hatchTimer.current);
+      if (evolutionTimer.current) window.clearTimeout(evolutionTimer.current);
     };
   }, []);
 
@@ -309,7 +329,9 @@ export default function App() {
       if (Date.now() - current.lastDiscoveryAt < 30000) return;
 
       const phaseNow = getDayPhase();
-      if (Math.random() > discoveryChance(phaseNow, current.personality)) return;
+      const evolved = evolutionModifiers(current.evolution.form);
+      const chance = Math.min(.72, discoveryChance(phaseNow, current.personality) * evolved.discovery);
+      if (Math.random() > chance) return;
 
       const item = discoverTreasure(current.treasures.map((treasure) => treasure.id), current.personality);
       if (!item) return;
@@ -329,6 +351,80 @@ export default function App() {
 
     return () => clearInterval(discovery);
   }, [creature.hatched]);
+
+  useEffect(() => {
+    if (!creature.hatched || creature.evolution.form || evolutionPendingRef.current) return;
+
+    const context = {
+      level: creature.level,
+      bond: creature.bond,
+      happiness: creature.happiness,
+      energy: creature.energy,
+      hunger: creature.hunger,
+      ageSeconds: creature.ageSeconds,
+      personality: creature.personality,
+      treasures: creature.treasures,
+      care: creature.evolution.care
+    };
+
+    if (!canEvolve(context)) return;
+
+    const nextForm = chooseEvolution(context);
+    const lines = evolutionMessage(nextForm);
+    evolutionPendingRef.current = true;
+    setMessage(lines.prelude);
+    setReaction("evolve");
+    burst("star", nextForm === "riftling" ? 18 : 12);
+
+    evolutionTimer.current = window.setTimeout(() => {
+      const form = evolutionForm(nextForm);
+      setCreature((prev) => ({
+        ...prev,
+        evolution: {
+          ...prev.evolution,
+          form: nextForm,
+          evolvedAt: Date.now()
+        },
+        happiness: 100,
+        energy: clamp(prev.energy + 18),
+        bond: clamp(prev.bond + 8),
+        journal: [
+          createEvent("Miko evolucionó a " + (form?.name ?? nextForm) + ".", "moment"),
+          ...prev.journal
+        ].slice(0, 8)
+      }));
+      setMessage(lines.reveal);
+      burst(nextForm === "riftling" ? "star" : "heart", nextForm === "riftling" ? 18 : 10);
+      setReaction("bounce");
+      evolutionPendingRef.current = false;
+      evolutionTimer.current = window.setTimeout(() => setReaction("none"), 1800);
+    }, 2300);
+  }, [
+    creature.hatched,
+    creature.evolution.form,
+    creature.evolution.care,
+    creature.level,
+    creature.bond,
+    creature.happiness,
+    creature.energy,
+    creature.hunger,
+    creature.ageSeconds,
+    creature.personality,
+    creature.treasures
+  ]);
+
+  function addCare(kind: keyof CareStats) {
+    setCreature((prev) => ({
+      ...prev,
+      evolution: {
+        ...prev.evolution,
+        care: {
+          ...prev.evolution.care,
+          [kind]: prev.evolution.care[kind] + 1
+        }
+      }
+    }));
+  }
 
   function setTemporaryReaction(next: Reaction, duration = 1500) {
     if (reactionTimer.current) window.clearTimeout(reactionTimer.current);
@@ -404,6 +500,9 @@ export default function App() {
       personality ? "Rareza personal: " + personality.quirk + ". Snack favorito: " + personality.favoriteSnack + "." : "",
       "Estado: hambre " + Math.round(current.hunger) + "/100, energía " + Math.round(current.energy) + "/100, felicidad " + Math.round(current.happiness) + "/100, vínculo " + Math.round(current.bond) + "/100.",
       "Momento: " + dayPhaseMeta(getDayPhase()).label + ".",
+      current.evolution.form
+        ? "Forma evolucionada: " + (evolutionForm(current.evolution.form)?.name ?? current.evolution.form) + ". " + (evolutionForm(current.evolution.form)?.description ?? "")
+        : "Aún no ha evolucionado.",
       "Tesoros: " + treasures + ".",
       "Recuerdos recientes: " + recent + "."
     ].filter(Boolean).join("\n");
@@ -483,6 +582,7 @@ export default function App() {
     if (!text || brainThinking) return;
 
     setBrainChatDraft("");
+    addCare("talks");
     setMessage("hmm…");
     setTemporaryReaction("peek", 1400);
     void speakWithBrain('El humano te dijo: "' + text + '". Respóndele directamente como Miko.');
@@ -491,7 +591,14 @@ export default function App() {
   function feed() {
     setCreature((p) => {
       const boost = p.personality?.modifiers.feedBoost ?? 1;
-      return { ...p, hunger: clamp(p.hunger - 28), happiness: clamp(p.happiness + 4 * boost), mood: "happy" };
+      const evolved = evolutionModifiers(p.evolution.form);
+      return {
+        ...p,
+        hunger: clamp(p.hunger - 28 * (p.evolution.form === "berryn" ? 1.22 : 1)),
+        happiness: clamp(p.happiness + 4 * boost * evolved.feedHappy),
+        mood: "happy",
+        evolution: { ...p.evolution, care: { ...p.evolution.care, feeds: p.evolution.care.feeds + 1 } }
+      };
     });
     gainXp(6);
     setMessage(creature.personality?.id === "glutton" ? "¡EL MEJOR DÍA! ✦" : "crunch crunch ✦");
@@ -503,12 +610,14 @@ export default function App() {
   function play() {
     setCreature((p) => {
       const boost = p.personality?.modifiers.playBoost ?? 1;
+      const evolved = evolutionModifiers(p.evolution.form);
       return {
         ...p,
-        happiness: clamp(p.happiness + 18 * boost),
+        happiness: clamp(p.happiness + 18 * boost * evolved.playHappy),
         energy: clamp(p.energy - 10),
         bond: clamp(p.bond + 3),
-        mood: "happy"
+        mood: "happy",
+        evolution: { ...p.evolution, care: { ...p.evolution.care, plays: p.evolution.care.plays + 1 } }
       };
     });
     gainXp(9);
@@ -521,11 +630,13 @@ export default function App() {
   function pet() {
     setCreature((p) => {
       const bondGain = p.personality?.modifiers.petBondGain ?? 1;
+      const evolved = evolutionModifiers(p.evolution.form);
       return {
         ...p,
         happiness: clamp(p.happiness + 9),
-        bond: clamp(p.bond + 4 * bondGain),
-        mood: "happy"
+        bond: clamp(p.bond + 4 * bondGain * evolved.petBond),
+        mood: "happy",
+        evolution: { ...p.evolution, care: { ...p.evolution.care, pets: p.evolution.care.pets + 1 } }
       };
     });
     gainXp(4);
@@ -536,7 +647,15 @@ export default function App() {
   }
 
   function sleep() {
-    setCreature((p) => ({ ...p, energy: clamp(p.energy + 24), mood: "sleepy" }));
+    setCreature((p) => {
+      const evolved = evolutionModifiers(p.evolution.form);
+      return {
+        ...p,
+        energy: clamp(p.energy + 24 * evolved.sleepEnergy),
+        mood: "sleepy",
+        evolution: { ...p.evolution, care: { ...p.evolution.care, sleeps: p.evolution.care.sleeps + 1 } }
+      };
+    });
     setMessage("zzZ…");
     setTemporaryReaction("sleep", 4200);
     burst("zzz", 4);
@@ -555,12 +674,24 @@ export default function App() {
 
   const stageStyle = { "--direction": direction } as CSSProperties;
   const phase = dayPhaseMeta(dayPhase);
+  const evolvedForm = evolutionForm(creature.evolution.form);
+  const resonance = evolutionReadiness({
+    level: creature.level,
+    bond: creature.bond,
+    happiness: creature.happiness,
+    energy: creature.energy,
+    hunger: creature.hunger,
+    ageSeconds: creature.ageSeconds,
+    personality: creature.personality,
+    treasures: creature.treasures,
+    care: creature.evolution.care
+  });
 
   return (
     <main
       ref={stageRef}
       style={stageStyle}
-      className={"stage mood-" + creature.mood + " reaction-" + reaction + " personality-" + (creature.personality?.id ?? "unborn") + " phase-" + dayPhase}
+      className={"stage mood-" + creature.mood + " reaction-" + reaction + " personality-" + (creature.personality?.id ?? "unborn") + " phase-" + dayPhase + " evolution-" + (creature.evolution.form ?? "baby")}
       onPointerMove={trackPointer}
       onPointerLeave={() => {
         stageRef.current?.style.setProperty("--look-x", "0px");
@@ -605,6 +736,10 @@ export default function App() {
           <div className="creature-wrap">
             <div className="floor-shadow" />
             <div className="miko">
+              <span className="evolution-aura" />
+              <span className="evolution-mark" />
+              <span className="evolution-wing evolution-wing-left" />
+              <span className="evolution-wing evolution-wing-right" />
               <span className="ear ear-left"><i /></span>
               <span className="ear ear-right"><i /></span>
               <span className="antenna"><i /></span>
@@ -645,7 +780,9 @@ export default function App() {
             <span className="avatar-dot">✦</span>
             <div>
               <strong>{creature.name}</strong>
-              <span>Nivel {creature.level} · {moodLabel(creature.mood)} · {phase.icon} {phase.label}</span>
+              <span>
+                Nivel {creature.level} · {evolvedForm ? evolvedForm.icon + " " + evolvedForm.name : moodLabel(creature.mood)} · {phase.icon} {phase.label}
+              </span>
             </div>
           </div>
           <button
@@ -661,6 +798,27 @@ export default function App() {
         </header>
 
         {panelView === "main" ? <>
+        {evolvedForm ? (
+          <div className={"evolution-card evolution-card-" + evolvedForm.id}>
+            <span className="evolution-card-icon">{evolvedForm.icon}</span>
+            <div>
+              <b>{evolvedForm.name}</b>
+              <small>{evolvedForm.title}</small>
+              <p>{evolvedForm.passive}</p>
+            </div>
+            {evolvedForm.secret && <i>SECRETA</i>}
+          </div>
+        ) : (
+          <div className="resonance-card">
+            <div className="resonance-copy">
+              <b>Resonancia</b>
+              <span>{resonance < 35 ? "Miko apenas está creciendo" : resonance < 72 ? "algo está cambiando…" : "la evolución está cerca"}</span>
+            </div>
+            <strong>{resonance}%</strong>
+            <div className="resonance-track"><i style={{ width: resonance + "%" }} /></div>
+          </div>
+        )}
+
         {creature.personality && (
           <div className="personality-card" title={creature.personality.description}>
             <span className="personality-icon">{creature.personality.icon}</span>
