@@ -1045,3 +1045,397 @@ button { font: inherit; }
   font-size: 6px;
   line-height: 1.4;
 }
+
+
+/* ---------------- evolution v0.6 ---------------- */
+.evolution-aura,
+.evolution-mark,
+.evolution-wing {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+.evolution-aura {
+  z-index: -1;
+  left: 50%;
+  bottom: -2px;
+  width: 142px;
+  height: 126px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+}
+.evolution-mark {
+  z-index: 8;
+  top: 33px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%);
+}
+.evolution-wing {
+  z-index: 1;
+  top: 43px;
+  width: 34px;
+  height: 48px;
+}
+.evolution-wing-left { left: -6px; }
+.evolution-wing-right { right: -6px; }
+
+.reaction-evolve .creature-hitbox {
+  pointer-events: none;
+}
+.reaction-evolve .miko {
+  animation: evolutionRise 2.3s cubic-bezier(.18,.78,.22,1) both;
+}
+.reaction-evolve .body {
+  animation: evolutionFlash .42s ease-in-out infinite alternate;
+}
+.reaction-evolve .evolution-aura {
+  opacity: 1;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.84) 0 6%, rgba(147,124,255,.5) 22%, rgba(95,232,218,.18) 48%, transparent 72%);
+  filter: blur(2px);
+  animation: evolutionAura .7s ease-in-out infinite alternate;
+}
+.reaction-evolve .floor-shadow {
+  animation: evolutionShadow .7s ease-in-out infinite alternate;
+}
+
+.resonance-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin: 9px 0 2px;
+  padding: 8px 9px 9px;
+  overflow: hidden;
+  border: 1px solid rgba(138,112,255,.13);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(104,222,211,.10), transparent 42%),
+    rgba(255,255,255,.035);
+}
+.resonance-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.resonance-copy b {
+  color: #f3f1fb;
+  font-size: 8px;
+}
+.resonance-copy span {
+  color: #8e8ca0;
+  font-size: 6px;
+}
+.resonance-card > strong {
+  color: #bfbae7;
+  font-size: 8px;
+}
+.resonance-track {
+  grid-column: 1 / -1;
+  height: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255,255,255,.06);
+}
+.resonance-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7568ff, #71ded4, #f5c9ff);
+  box-shadow: 0 0 10px rgba(111,222,212,.22);
+  transition: width .45s ease;
+}
+
+.evolution-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin: 9px 0 2px;
+  padding: 8px 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 0 0, rgba(255,255,255,.08), transparent 42%),
+    rgba(255,255,255,.035);
+}
+.evolution-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -14px -22px auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(114,223,213,.12), transparent 70%);
+}
+.evolution-card-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 11px;
+  background: rgba(255,255,255,.06);
+  font-size: 15px;
+}
+.evolution-card > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.evolution-card b { font-size: 9px; }
+.evolution-card small { color: #aaa8b9; font-size: 6px; }
+.evolution-card p {
+  max-width: 142px;
+  margin: 2px 0 0;
+  color: #858396;
+  font-size: 6px;
+  line-height: 1.28;
+}
+.evolution-card > i {
+  color: #ffdca1;
+  font-size: 5px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+/* Lumiko — affectionate light form */
+.evolution-lumiko .body {
+  width: 127px;
+  height: 106px;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255,255,255,.98) 0 4%, rgba(255,255,255,.38) 5%, transparent 13%),
+    radial-gradient(circle at 66% 72%, rgba(255,179,229,.66), transparent 36%),
+    linear-gradient(150deg, #cab7ff 0%, #9d83ff 40%, #7dbdff 70%, #81f0df 120%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.8),
+    inset -14px -17px 23px rgba(74,49,151,.18),
+    0 20px 38px rgba(73,57,160,.22),
+    0 0 38px rgba(176,149,255,.28);
+}
+.evolution-lumiko .evolution-aura {
+  opacity: .85;
+  background: radial-gradient(circle, rgba(255,221,244,.32), rgba(129,235,222,.11) 48%, transparent 72%);
+  animation: lumikoAura 2.4s ease-in-out infinite;
+}
+.evolution-lumiko .evolution-mark {
+  opacity: 1;
+  border-radius: 50% 50% 50% 0;
+  background: #fff4ff;
+  box-shadow: 0 0 10px rgba(255,229,250,.8);
+  transform: translateX(-50%) rotate(-45deg) scale(.72);
+}
+.evolution-lumiko .blush { opacity: .98; }
+.evolution-lumiko .tail { width: 54px; background: linear-gradient(130deg, #9f88ff, #78eadc); }
+
+/* Voltik — high-energy form */
+.evolution-voltik .body {
+  border-radius: 50% 50% 38% 38% / 44% 44% 54% 54%;
+  background:
+    radial-gradient(circle at 30% 16%, rgba(255,255,255,.96) 0 3%, rgba(255,255,255,.28) 4%, transparent 12%),
+    radial-gradient(circle at 67% 70%, rgba(88,245,255,.7), transparent 34%),
+    linear-gradient(145deg, #895cff, #626cff 40%, #3ebfff 70%, #46f0cb 120%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.65), 0 18px 34px rgba(50,47,144,.25), 0 0 34px rgba(65,220,255,.28);
+}
+.evolution-voltik .ear-left { transform: rotate(-39deg) skewY(-7deg); }
+.evolution-voltik .ear-right { transform: rotate(39deg) skewY(7deg); }
+.evolution-voltik .antenna { height: 39px; }
+.evolution-voltik .antenna i {
+  border-radius: 3px 70% 45% 70%;
+  transform: translateX(-50%) rotate(45deg);
+  background: #ddff78;
+  box-shadow: 0 0 15px rgba(204,255,105,.8);
+}
+.evolution-voltik .evolution-mark {
+  opacity: 1;
+  width: 9px;
+  height: 18px;
+  clip-path: polygon(45% 0, 100% 0, 65% 42%, 100% 42%, 24% 100%, 44% 57%, 10% 57%);
+  background: #f2ff87;
+  box-shadow: 0 0 12px rgba(231,255,104,.78);
+}
+.evolution-voltik .tail {
+  width: 58px;
+  height: 20px;
+  clip-path: polygon(0 31%, 38% 0, 31% 34%, 72% 20%, 54% 58%, 100% 53%, 46% 100%, 51% 62%, 9% 77%);
+  border-radius: 0;
+  background: linear-gradient(90deg, #7567ff, #65f0d6);
+}
+
+/* Mossling — calm nature form */
+.evolution-mossling .body {
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255,255,255,.9) 0 3%, rgba(255,255,255,.28) 4%, transparent 12%),
+    radial-gradient(circle at 67% 75%, rgba(169,255,174,.52), transparent 36%),
+    linear-gradient(150deg, #a990e4 0%, #7798bf 36%, #62b59c 69%, #7ed58d 118%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.62), 0 20px 35px rgba(37,80,75,.19), 0 0 28px rgba(115,208,148,.18);
+}
+.evolution-mossling .evolution-mark {
+  opacity: 1;
+  top: 28px;
+  width: 16px;
+  height: 20px;
+  border-radius: 80% 5% 80% 10%;
+  background: linear-gradient(145deg, #b6f58d, #5fc98c);
+  transform: translateX(-50%) rotate(30deg);
+  box-shadow: 0 0 11px rgba(121,225,143,.42);
+}
+.evolution-mossling .ear i { background: linear-gradient(145deg, rgba(193,242,155,.55), rgba(76,169,126,.18)); }
+.evolution-mossling .antenna i {
+  background: radial-gradient(circle at 35% 30%, white 0 10%, #baf7a0 25%, #65c991 78%);
+  box-shadow: 0 0 14px rgba(105,211,139,.5);
+}
+
+/* Noctiko — lunar form */
+.evolution-noctiko .body {
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255,255,255,.9) 0 3%, rgba(255,255,255,.24) 4%, transparent 12%),
+    radial-gradient(circle at 68% 72%, rgba(115,148,255,.5), transparent 34%),
+    linear-gradient(150deg, #7d74c9 0%, #554f9e 42%, #445d9d 72%, #4a9d9b 120%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.42), 0 20px 36px rgba(20,21,63,.34), 0 0 35px rgba(99,93,220,.27);
+}
+.evolution-noctiko .eye {
+  background: linear-gradient(#17162d, #090a16);
+  box-shadow: inset 0 -3px 7px rgba(119,145,255,.18);
+}
+.evolution-noctiko .evolution-mark {
+  opacity: 1;
+  width: 17px;
+  height: 17px;
+  border: 3px solid #c6d1ff;
+  border-right-color: transparent;
+  border-radius: 50%;
+  transform: translateX(-50%) rotate(-24deg);
+  filter: drop-shadow(0 0 5px rgba(162,178,255,.58));
+}
+.evolution-noctiko .evolution-aura {
+  opacity: .72;
+  background: radial-gradient(circle, rgba(117,111,232,.27), transparent 69%);
+  animation: noctikoAura 3.2s ease-in-out infinite;
+}
+
+/* Berryn — round food-loving form */
+.evolution-berryn .body {
+  width: 131px;
+  height: 108px;
+  border-radius: 50% 50% 45% 45% / 52% 52% 48% 48%;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255,255,255,.95) 0 3%, rgba(255,255,255,.30) 4%, transparent 12%),
+    radial-gradient(circle at 70% 75%, rgba(255,198,179,.56), transparent 37%),
+    linear-gradient(150deg, #ca7dca 0%, #ac6bbb 38%, #d96f98 70%, #f0938c 118%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.62), 0 21px 38px rgba(99,42,92,.22), 0 0 31px rgba(255,131,157,.18);
+}
+.evolution-berryn .evolution-mark {
+  opacity: 1;
+  top: 27px;
+  width: 18px;
+  height: 12px;
+  border-radius: 80% 0 80% 0;
+  background: #83d987;
+  transform: translateX(-50%) rotate(-18deg);
+}
+.evolution-berryn .blush { width: 25px; opacity: 1; }
+.evolution-berryn .paw { width: 41px; }
+
+/* Riftling — secret portal form */
+.evolution-riftling .body {
+  border-color: rgba(196,235,255,.34);
+  background:
+    radial-gradient(circle at 27% 17%, rgba(255,255,255,.92) 0 3%, rgba(255,255,255,.23) 4%, transparent 11%),
+    radial-gradient(circle at 67% 72%, rgba(78,255,220,.34), transparent 31%),
+    radial-gradient(circle at 48% 52%, rgba(112,77,255,.5), transparent 56%),
+    linear-gradient(145deg, #332b72 0%, #493791 35%, #245f8d 70%, #266e73 118%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.35),
+    inset -12px -16px 23px rgba(7,6,34,.34),
+    0 21px 40px rgba(13,10,56,.38),
+    0 0 40px rgba(81,107,255,.3);
+}
+.evolution-riftling .evolution-aura {
+  opacity: 1;
+  border: 1px solid rgba(113,239,218,.16);
+  background:
+    conic-gradient(from 0deg, transparent, rgba(117,91,255,.19), transparent 34%, rgba(74,232,209,.16), transparent 66%, rgba(188,111,255,.14), transparent);
+  filter: blur(.2px);
+  animation: riftSpin 5.8s linear infinite;
+}
+.evolution-riftling .evolution-mark {
+  opacity: 1;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #83f2dc;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1a164a 0 31%, transparent 35%);
+  box-shadow: 0 0 12px rgba(95,231,213,.68), inset 0 0 6px rgba(165,107,255,.7);
+}
+.evolution-riftling .evolution-wing {
+  opacity: .82;
+  border: 1px solid rgba(124,240,224,.22);
+  background: linear-gradient(145deg, rgba(115,91,255,.44), rgba(76,227,207,.12));
+  filter: drop-shadow(0 0 8px rgba(91,183,255,.18));
+}
+.evolution-riftling .evolution-wing-left {
+  border-radius: 90% 12% 70% 22%;
+  transform: rotate(-24deg);
+}
+.evolution-riftling .evolution-wing-right {
+  border-radius: 12% 90% 22% 70%;
+  transform: rotate(24deg);
+}
+.evolution-riftling .antenna i {
+  background: radial-gradient(circle at 45% 40%, white 0 8%, #70f3db 19%, #6f4fff 60%, #17163e 100%);
+  box-shadow: 0 0 19px rgba(94,238,216,.62);
+}
+.evolution-riftling .tail {
+  background: linear-gradient(130deg, #4c3bb4, #3ac4b4);
+  box-shadow: 0 0 12px rgba(68,212,199,.2);
+}
+
+.evolution-card-lumiko { border-color: rgba(232,184,245,.15); }
+.evolution-card-voltik { border-color: rgba(204,255,105,.14); }
+.evolution-card-mossling { border-color: rgba(119,216,145,.14); }
+.evolution-card-noctiko { border-color: rgba(130,143,235,.16); }
+.evolution-card-berryn { border-color: rgba(246,137,157,.15); }
+.evolution-card-riftling {
+  border-color: rgba(98,229,211,.20);
+  background: linear-gradient(135deg, rgba(82,57,173,.12), rgba(47,171,162,.07));
+}
+
+@keyframes evolutionRise {
+  0% { transform: translateX(-50%) translateY(0) scale(1); filter: brightness(1); }
+  35% { transform: translateX(-50%) translateY(-13px) scale(.9,1.08); filter: brightness(1.25); }
+  68% { transform: translateX(-50%) translateY(-18px) scale(1.12,.95); filter: brightness(1.7); }
+  100% { transform: translateX(-50%) translateY(0) scale(1); filter: brightness(1); }
+}
+@keyframes evolutionFlash {
+  from { filter: brightness(1) saturate(1); }
+  to { filter: brightness(1.7) saturate(.65); }
+}
+@keyframes evolutionAura {
+  from { transform: translateX(-50%) scale(.78) rotate(-8deg); opacity: .45; }
+  to { transform: translateX(-50%) scale(1.22) rotate(8deg); opacity: 1; }
+}
+@keyframes evolutionShadow {
+  from { transform: scaleX(.82); opacity: .4; }
+  to { transform: scaleX(1.2); opacity: .72; }
+}
+@keyframes lumikoAura {
+  0%,100% { transform: translateX(-50%) scale(.94); opacity: .52; }
+  50% { transform: translateX(-50%) scale(1.08); opacity: .9; }
+}
+@keyframes noctikoAura {
+  0%,100% { transform: translateX(-50%) scale(.9); opacity: .45; }
+  50% { transform: translateX(-50%) scale(1.12); opacity: .76; }
+}
+@keyframes riftSpin {
+  from { transform: translateX(-50%) rotate(0deg) scale(.95); }
+  to { transform: translateX(-50%) rotate(360deg) scale(.95); }
+}
