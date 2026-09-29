@@ -219,18 +219,18 @@ export function evolutionMessage(id: EvolutionId) {
 export function evolutionModifiers(id: EvolutionId | null) {
   switch (id) {
     case "lumiko":
-      return { petBond: 1.3, playHappy: 1, feedHappy: 1, sleepEnergy: 1, happinessDecay: .82, discovery: 1 };
+      return { petBond: 1.3, playHappy: 1, feedHappy: 1, sleepEnergy: 1, happinessDecay: .82, discovery: 1, moveSpeed: 1.02 };
     case "voltik":
-      return { petBond: 1, playHappy: 1.42, feedHappy: .96, sleepEnergy: .9, happinessDecay: 1, discovery: 1.12 };
+      return { petBond: 1, playHappy: 1.42, feedHappy: .96, sleepEnergy: .9, happinessDecay: 1, discovery: 1.12, moveSpeed: 1.34 };
     case "mossling":
-      return { petBond: 1.08, playHappy: .96, feedHappy: 1.06, sleepEnergy: 1.08, happinessDecay: .68, discovery: 1.15 };
+      return { petBond: 1.08, playHappy: .96, feedHappy: 1.06, sleepEnergy: 1.08, happinessDecay: .68, discovery: 1.15, moveSpeed: .84 };
     case "noctiko":
-      return { petBond: 1.05, playHappy: .9, feedHappy: 1, sleepEnergy: 1.48, happinessDecay: .78, discovery: 1.18 };
+      return { petBond: 1.05, playHappy: .9, feedHappy: 1, sleepEnergy: 1.48, happinessDecay: .78, discovery: 1.18, moveSpeed: .78 };
     case "berryn":
-      return { petBond: 1, playHappy: .9, feedHappy: 1.55, sleepEnergy: 1, happinessDecay: .9, discovery: 1 };
+      return { petBond: 1, playHappy: .9, feedHappy: 1.55, sleepEnergy: 1, happinessDecay: .9, discovery: 1, moveSpeed: .9 };
     case "riftling":
-      return { petBond: 1.16, playHappy: 1.18, feedHappy: 1.08, sleepEnergy: 1.18, happinessDecay: .72, discovery: 1.5 };
+      return { petBond: 1.16, playHappy: 1.18, feedHappy: 1.08, sleepEnergy: 1.18, happinessDecay: .72, discovery: 1.5, moveSpeed: 1.2 };
     default:
-      return { petBond: 1, playHappy: 1, feedHappy: 1, sleepEnergy: 1, happinessDecay: 1, discovery: 1 };
+      return { petBond: 1, playHappy: 1, feedHappy: 1, sleepEnergy: 1, happinessDecay: 1, discovery: 1, moveSpeed: 1 };
   }
 }
