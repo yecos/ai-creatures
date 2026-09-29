@@ -1830,3 +1830,76 @@ button { font: inherit; }
   0%,100% { margin-bottom: 0; }
   50% { margin-bottom: 4px; }
 }
+
+
+/* ---------------- side panel fix ---------------- */
+.stage.menu-open {
+  display: block;
+  padding-bottom: 0;
+}
+
+.stage.menu-open .creature-hitbox {
+  position: absolute;
+  left: 42px;
+  bottom: 20px;
+}
+
+.stage.menu-open.menu-left .creature-hitbox {
+  left: auto;
+  right: 42px;
+}
+
+.stage.menu-open .speech {
+  left: 130px;
+  bottom: 172px;
+}
+
+.stage.menu-open.menu-left .speech {
+  left: auto;
+  right: 130px;
+  transform: translateX(50%) translateY(0);
+}
+
+.stage.menu-open .panel {
+  top: 6px;
+  right: 8px;
+  bottom: 6px;
+  left: auto;
+  width: 282px;
+  max-height: 288px;
+  transform: translateX(18px) scale(.98);
+  transform-origin: center right;
+}
+
+.stage.menu-open .panel.open {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+.stage.menu-open.menu-left .panel {
+  right: auto;
+  left: 8px;
+  transform-origin: center left;
+}
+
+.stage.menu-open.menu-left .panel:not(.open) {
+  transform: translateX(-18px) scale(.98);
+}
+
+.stage.menu-open .visitor-creature {
+  right: auto;
+  left: 170px;
+}
+
+.stage.menu-open.menu-left .visitor-creature {
+  left: auto;
+  right: 170px;
+}
+
+.stage.menu-open .particle-layer {
+  pointer-events: none;
+}
+
+.stage.menu-open .hint {
+  display: none;
+}
