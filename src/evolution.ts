@@ -142,7 +142,7 @@ export function chooseEvolution(ctx: EvolutionContext): EvolutionId {
   // Secret route: the rarest treasure can fundamentally alter Miko.
   if (
     hasTreasure(ctx, "portal-shard")
-    && ctx.level >= 4
+    && ctx.level >= 3
     && (p?.id === "curious" || p?.id === "mischievous")
     && ctx.bond >= 35
   ) {
